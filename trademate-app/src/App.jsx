@@ -483,9 +483,15 @@ function ProAuth({ session, onDone, onBack }) {
   const submitAuth = async () => {
     setError(""); setBusy(true);
     if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { data: signUpData, error } = await supabase.auth.signUp({ email, password });
       setBusy(false);
       if (error) { setError(error.message); return; }
+      if (!signUpData.session) {
+        // Supabase accepts signup silently for an already-registered email (no error, no session)
+        // to avoid confirming which emails exist. If there's no session, this wasn't a real signup.
+        setError("This email may already have an account. Try Log in instead, or check your inbox to confirm a new account.");
+        return;
+      }
       setMode("setup"); // after email/password created, collect business details
     } else {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
@@ -504,6 +510,11 @@ function ProAuth({ session, onDone, onBack }) {
     if (!location) { setError("Enter your address and click Locate."); return; }
     setBusy(true);
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setBusy(false);
+      setError("Your session has expired — please go back and log in again.");
+      return;
+    }
     let slug = slugify(bizName);
     // ensure uniqueness by checking existing slugs
     const { data: clashes } = await supabase.from("businesses").select("slug").ilike("slug", `${slug}%`);

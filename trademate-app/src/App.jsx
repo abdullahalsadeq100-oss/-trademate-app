@@ -349,8 +349,7 @@ export default function App() {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) loadOwnedBusiness(session.user.id);
-      else setPhase("role");
+      setPhase("role"); // always start here — session is checked later, only if they choose "I'm a tradesperson"
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
@@ -364,6 +363,11 @@ export default function App() {
     else setPhase("pro-auth"); // logged in but no business yet — finish setup
   };
 
+  const handleChoosePro = async () => {
+    if (session) await loadOwnedBusiness(session.user.id);
+    else setPhase("pro-auth");
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setBusiness(null);
@@ -375,7 +379,7 @@ export default function App() {
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#F6F1E7", color: "#1E1B16", minHeight: "100vh" }} className="w-full">
       <GlobalStyle />
       {phase === "loading" && <div className="flex items-center justify-center py-24 text-sm" style={{ color: "#5B6B7D" }}><Loader2 className="animate-spin mr-2" size={16} /> Loading…</div>}
-      {phase === "role" && <RoleSelect onPro={() => setPhase("pro-auth")} onCustomer={() => setPhase("cust-lookup")} onBrowse={() => setPhase("browse")} />}
+      {phase === "role" && <RoleSelect onPro={handleChoosePro} onCustomer={() => setPhase("cust-lookup")} onBrowse={() => setPhase("browse")} />}
       {phase === "pro-auth" && <ProAuth session={session} onDone={(biz) => { setBusiness(biz); setPhase("pro-app"); }} onBack={() => setPhase("role")} />}
       {phase === "pro-app" && business && <ProDashboard business={business} onLogout={logout} onBusinessUpdate={setBusiness} />}
       {phase === "cust-lookup" && <CustomerLookup onBack={() => setPhase("role")} onFound={goToStatus} />}

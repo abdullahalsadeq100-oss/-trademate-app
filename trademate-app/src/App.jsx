@@ -364,8 +364,7 @@ export default function App() {
   };
 
   const handleChoosePro = async () => {
-    if (session) await loadOwnedBusiness(session.user.id);
-    else setPhase("pro-auth");
+    setPhase("pro-auth");
   };
 
   const logout = async () => {
@@ -470,7 +469,7 @@ function RoleSelect({ onPro, onCustomer, onBrowse }) {
 /* ---------------- Professional auth (real Supabase Auth) ---------------- */
 
 function ProAuth({ session, onDone, onBack }) {
-  const [mode, setMode] = useState(session ? "setup" : "login"); // login|signup|setup
+  const [mode, setMode] = useState("login"); // login|signup|setup — always start at login
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [bizName, setBizName] = useState("");
@@ -489,10 +488,13 @@ function ProAuth({ session, onDone, onBack }) {
       if (error) { setError(error.message); return; }
       setMode("setup"); // after email/password created, collect business details
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) { setBusy(false); setError(signInError.message); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: biz } = await supabase.from("businesses").select("*").eq("owner_id", user.id).limit(1).maybeSingle();
       setBusy(false);
-      if (error) { setError(error.message); return; }
-      // onAuthStateChange in App will pick up the session and load/redirect
+      if (biz) onDone(biz);
+      else setMode("setup"); // logged in, but no business yet — finish setup
     }
   };
 

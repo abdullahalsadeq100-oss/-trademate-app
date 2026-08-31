@@ -62,6 +62,18 @@ function distanceKm(lat1, lon1, lat2, lon2) {
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
+async function uploadPhotos(files) {
+  const urls = [];
+  for (const file of files) {
+    const path = `${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "")}`;
+    const { error } = await supabase.storage.from("job-photos").upload(path, file);
+    if (error) throw new Error(`Photo upload failed: ${error.message}`);
+    const { data } = supabase.storage.from("job-photos").getPublicUrl(path);
+    urls.push(data.publicUrl);
+  }
+  return urls;
+}
+
 async function callCreateCheckout(leadId) {
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
   const res = await fetch(url, {
@@ -477,8 +489,57 @@ function BrowseTrades({ onBack, onViewStatus }) {
   );
 }
 
+function PhotoPicker({ files, onChange }) {
+  const inputRef = React.useRef(null);
+  const addFiles = (fileList) => {
+    const next = [...files, ...Array.from(fileList)].slice(0, 5); // cap at 5 photos
+    onChange(next);
+  };
+  const removeAt = (i) => onChange(files.filter((_, idx) => idx !== i));
+
+  return (
+    <div>
+      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#5B6B7D" }}>Photos (optional)</label>
+      <div className="flex flex-wrap gap-2 mt-1">
+        {files.map((f, i) => (
+          <div key={i} className="relative w-16 h-16 rounded-sm overflow-hidden border" style={{ borderColor: "#e3dbc8" }}>
+            <img src={URL.createObjectURL(f)} alt="" className="w-full h-full object-cover" />
+            <button type="button" onClick={() => removeAt(i)} className="absolute top-0 right-0 bg-black/60 text-white rounded-bl-sm p-0.5">
+              <X size={12} />
+            </button>
+          </div>
+        ))}
+        {files.length < 5 && (
+          <button type="button" onClick={() => inputRef.current?.click()}
+            className="w-16 h-16 rounded-sm border-2 border-dashed flex flex-col items-center justify-center"
+            style={{ borderColor: "#e3dbc8", color: "#8b8474" }}>
+            <Camera size={18} />
+            <span className="text-[9px] mt-0.5">Add</span>
+          </button>
+        )}
+      </div>
+      <input ref={inputRef} type="file" accept="image/*" multiple className="hidden"
+        onChange={(e) => { if (e.target.files.length) addFiles(e.target.files); e.target.value = ""; }} />
+    </div>
+  );
+}
+
+function PhotoThumbnails({ photos }) {
+  if (!photos || photos.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2 mt-2">
+      {photos.map((url, i) => (
+        <a key={i} href={url} target="_blank" rel="noreferrer" className="w-16 h-16 rounded-sm overflow-hidden border block" style={{ borderColor: "#e3dbc8" }}>
+          <img src={url} alt="" className="w-full h-full object-cover" />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 function PublicEnquiryModal({ business, onClose, onSubmitted }) {
-  const [form, setForm] = useState({ name: "", phone: "", address: "", problem: "", hasPhotos: false });
+  const [form, setForm] = useState({ name: "", phone: "", address: "", problem: "" });
+  const [photos, setPhotos] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -486,13 +547,18 @@ function PublicEnquiryModal({ business, onClose, onSubmitted }) {
 
   const submit = async () => {
     setSaving(true); setError("");
-    const { data, error } = await supabase.rpc("create_lead", {
-      p_business_id: business.id, p_name: form.name, p_phone: form.phone, p_address: form.address,
-      p_problem: form.problem, p_has_photos: form.hasPhotos, p_channel: "web",
-    });
+    try {
+      const photoUrls = photos.length ? await uploadPhotos(photos) : [];
+      const { data, error } = await supabase.rpc("create_lead", {
+        p_business_id: business.id, p_name: form.name, p_phone: form.phone, p_address: form.address,
+        p_problem: form.problem, p_has_photos: photoUrls.length > 0, p_channel: "web", p_photos: photoUrls,
+      });
+      if (error) throw error;
+      onSubmitted(data);
+    } catch (e) {
+      setError(e.message || "Something went wrong — please try again.");
+    }
     setSaving(false);
-    if (error) { setError(error.message); return; }
-    onSubmitted(data);
   };
 
   return (
@@ -508,10 +574,7 @@ function PublicEnquiryModal({ business, onClose, onSubmitted }) {
           <Field label="Phone"><input value={form.phone} onChange={(e) => set("phone", e.target.value)} className="tm-input" placeholder="087 123 4567" /></Field>
           <Field label="Address"><input value={form.address} onChange={(e) => set("address", e.target.value)} className="tm-input" placeholder="5km from Galway city centre" /></Field>
           <Field label="What's the problem?"><textarea value={form.problem} onChange={(e) => set("problem", e.target.value)} rows={3} className="tm-input" placeholder="Boiler isn't firing up, no hot water since this morning" /></Field>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.hasPhotos} onChange={(e) => set("hasPhotos", e.target.checked)} />
-            <span className="flex items-center gap-1"><Camera size={14} /> I have photos to send</span>
-          </label>
+          <PhotoPicker files={photos} onChange={setPhotos} />
           {error && <p className="text-xs" style={{ color: "#C2410C" }}>{error}</p>}
           <button disabled={!canSubmit || saving} onClick={submit} style={{ background: canSubmit ? "#FF6A13" : "#d8d0bd" }} className="w-full text-white font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2">
             {saving ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />} Send request
@@ -601,6 +664,7 @@ function CustomerView({ businessName, lead: initialLead, onBack }) {
           <Stamp status={lead.status} />
         </div>
         <p className="text-sm mb-3">{lead.problem}</p>
+        <PhotoThumbnails photos={lead.photos} />
 
         {messages.length > 0 && (
           <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3 mb-3">
@@ -673,7 +737,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
   const createLead = async (form) => {
     const { data, error } = await supabase.rpc("create_lead", {
       p_business_id: business.id, p_name: form.name, p_phone: form.phone, p_address: form.address,
-      p_problem: form.problem, p_has_photos: form.hasPhotos, p_channel: form.channel,
+      p_problem: form.problem, p_has_photos: (form.photos || []).length > 0, p_channel: form.channel, p_photos: form.photos || [],
     });
     if (!error && data) {
       setLeads((prev) => [data, ...prev]);
@@ -811,10 +875,23 @@ function Inbox({ leads, onSelect, onNew }) {
 /* ---------------- New Lead Modal (internal) ---------------- */
 
 function NewLeadModal({ onClose, onCreate }) {
-  const [form, setForm] = useState({ name: "", phone: "", address: "", channel: "web", problem: "", hasPhotos: false });
+  const [form, setForm] = useState({ name: "", phone: "", address: "", channel: "web", problem: "" });
+  const [photos, setPhotos] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const canSubmit = form.name && form.phone && form.address && form.problem;
+
+  const submit = async () => {
+    setSaving(true); setError("");
+    try {
+      const photoUrls = photos.length ? await uploadPhotos(photos) : [];
+      await onCreate({ ...form, photos: photoUrls });
+    } catch (e) {
+      setError(e.message || "Something went wrong — please try again.");
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
@@ -843,11 +920,9 @@ function NewLeadModal({ onClose, onCreate }) {
           <Field label="Phone"><input value={form.phone} onChange={(e) => set("phone", e.target.value)} className="tm-input" placeholder="087 123 4567" /></Field>
           <Field label="Address"><input value={form.address} onChange={(e) => set("address", e.target.value)} className="tm-input" placeholder="5km from Galway city centre" /></Field>
           <Field label="What's the problem?"><textarea value={form.problem} onChange={(e) => set("problem", e.target.value)} rows={3} className="tm-input" placeholder="Boiler isn't firing up, no hot water since this morning" /></Field>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.hasPhotos} onChange={(e) => set("hasPhotos", e.target.checked)} />
-            <span className="flex items-center gap-1"><Camera size={14} /> Customer sent photos</span>
-          </label>
-          <button disabled={!canSubmit || saving} onClick={async () => { setSaving(true); await onCreate(form); setSaving(false); }} style={{ background: canSubmit ? "#FF6A13" : "#d8d0bd" }} className="w-full text-white font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2">
+          <PhotoPicker files={photos} onChange={setPhotos} />
+          {error && <p className="text-xs" style={{ color: "#C2410C" }}>{error}</p>}
+          <button disabled={!canSubmit || saving} onClick={submit} style={{ background: canSubmit ? "#FF6A13" : "#d8d0bd" }} className="w-full text-white font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2">
             {saving ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />} Log enquiry
           </button>
         </div>
@@ -883,9 +958,19 @@ function LeadDetail({ lead, onBack, onPatch }) {
   };
 
   const sendAnswer = () => { if (!answerDraft.trim()) return; onPatch({ messages: [...messages, { role: "customer", text: answerDraft, time: new Date().toISOString() }] }); setAnswerDraft(""); };
-  const approveQuote = () => onPatch({ quote: quoteDraft, status: "quoted" });
-  const confirmBooking = () => { if (!bookingDraft.date || !bookingDraft.time) return; onPatch({ booking: bookingDraft, status: "booked" }); };
-  const markComplete = () => { const total = (quoteDraft.labour || 0) + (quoteDraft.callout || 0) + Math.round(((quoteDraft.partsMin || 0) + (quoteDraft.partsMax || 0)) / 2); onPatch({ status: "invoiced", invoice: { total, issuedAt: new Date().toISOString(), paid: false } }); };
+  const startManualQuote = () => setQuoteDraft({ labour: 0, callout: 0, partsMin: 0, partsMax: 0 });
+  const quoteEditable = !lead.quote || lead.status === "new" || lead.status === "quoted";
+  const saveQuote = () => onPatch({ quote: quoteDraft, status: lead.status === "new" ? "quoted" : lead.status });
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const confirmBooking = () => {
+    if (!bookingDraft.date || !bookingDraft.time) return;
+    onPatch({ booking: bookingDraft, status: lead.status === "new" || lead.status === "quoted" ? "booked" : lead.status });
+    setShowBookingForm(false);
+  };
+  const markComplete = () => {
+    const total = quoteDraft ? (quoteDraft.labour || 0) + (quoteDraft.callout || 0) + Math.round(((quoteDraft.partsMin || 0) + (quoteDraft.partsMax || 0)) / 2) : 0;
+    onPatch({ status: "invoiced", invoice: { total, issuedAt: new Date().toISOString(), paid: false } });
+  };
   const markPaid = () => onPatch({ status: "paid", invoice: { ...lead.invoice, paid: true, paidAt: new Date().toISOString() } });
 
   return (
@@ -901,7 +986,7 @@ function LeadDetail({ lead, onBack, onPatch }) {
           <div className="text-sm flex items-center gap-1" style={{ color: "#5B6B7D" }}><MapPin size={12} /> {lead.address}</div>
           <div className="mt-1"><ChannelBadge channel={lead.channel} /></div>
           <p className="mt-2 text-sm">{lead.problem}</p>
-          {lead.has_photos && <div className="text-xs mt-1 flex items-center gap-1" style={{ color: "#5B6B7D" }}><Camera size={12} /> Photos attached</div>}
+          <PhotoThumbnails photos={lead.photos} />
         </div>
 
         <div>
@@ -912,7 +997,7 @@ function LeadDetail({ lead, onBack, onPatch }) {
                 <div className="text-[10px] uppercase font-semibold mb-0.5" style={{ color: "#8b8474" }}>{m.role === "assistant" ? "AI (to customer)" : m.role}</div>{m.text}
               </div>
             ))}
-            {messages.length === 0 && <p className="text-sm" style={{ color: "#8b8474" }}>No AI assessment yet.</p>}
+            {messages.length === 0 && <p className="text-sm" style={{ color: "#8b8474" }}>No AI assessment yet — optional, you can quote and book without it below.</p>}
           </div>
           <div className="flex gap-2 mt-2">
             <button onClick={askAI} disabled={aiLoading} style={{ background: "#10233B" }} className="text-white text-xs font-semibold px-3 py-2 rounded-sm flex items-center gap-1">
@@ -927,37 +1012,59 @@ function LeadDetail({ lead, onBack, onPatch }) {
           </div>
         </div>
 
-        {quoteDraft && (
-          <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-4">
-            <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5B6B7D" }}>Quote</div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <MoneyField label="Labour" value={quoteDraft.labour} onChange={(v) => setQuoteDraft({ ...quoteDraft, labour: v })} disabled={lead.status !== "new"} />
-              <MoneyField label="Call-out" value={quoteDraft.callout} onChange={(v) => setQuoteDraft({ ...quoteDraft, callout: v })} disabled={lead.status !== "new"} />
-              <MoneyField label="Parts (min)" value={quoteDraft.partsMin} onChange={(v) => setQuoteDraft({ ...quoteDraft, partsMin: v })} disabled={lead.status !== "new"} />
-              <MoneyField label="Parts (max)" value={quoteDraft.partsMax} onChange={(v) => setQuoteDraft({ ...quoteDraft, partsMax: v })} disabled={lead.status !== "new"} />
-            </div>
-            {lead.status === "new" && <button onClick={approveQuote} style={{ background: "#FF6A13" }} className="mt-3 text-white text-sm font-semibold px-4 py-2 rounded-sm">Approve quote & send</button>}
-          </div>
-        )}
+        <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-4">
+          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5B6B7D" }}>Quote</div>
+          {!quoteDraft ? (
+            <button onClick={startManualQuote} style={{ background: "#10233B" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm flex items-center gap-1">
+              <FileText size={14} /> Create a quote
+            </button>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <MoneyField label="Labour" value={quoteDraft.labour} onChange={(v) => setQuoteDraft({ ...quoteDraft, labour: v })} disabled={!quoteEditable} />
+                <MoneyField label="Call-out" value={quoteDraft.callout} onChange={(v) => setQuoteDraft({ ...quoteDraft, callout: v })} disabled={!quoteEditable} />
+                <MoneyField label="Parts (min)" value={quoteDraft.partsMin} onChange={(v) => setQuoteDraft({ ...quoteDraft, partsMin: v })} disabled={!quoteEditable} />
+                <MoneyField label="Parts (max)" value={quoteDraft.partsMax} onChange={(v) => setQuoteDraft({ ...quoteDraft, partsMax: v })} disabled={!quoteEditable} />
+              </div>
+              {quoteEditable && (
+                <button onClick={saveQuote} style={{ background: "#FF6A13" }} className="mt-3 text-white text-sm font-semibold px-4 py-2 rounded-sm">
+                  {lead.quote ? "Update quote" : "Approve quote & send"}
+                </button>
+              )}
+            </>
+          )}
+        </div>
 
-        {lead.status === "quoted" && (
+        {!lead.booking && (
           <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-4">
             <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5B6B7D" }}>Book the job</div>
-            <div className="flex gap-2">
-              <input type="date" value={bookingDraft.date} onChange={(e) => setBookingDraft({ ...bookingDraft, date: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#e3dbc8" }} />
-              <select value={bookingDraft.time} onChange={(e) => setBookingDraft({ ...bookingDraft, time: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#e3dbc8" }}>
-                <option value="">Time slot</option>
-                {["08:00–10:00","10:00–12:00","12:00–14:00","14:00–16:00","16:00–18:00"].map((t) => <option key={t}>{t}</option>)}
-              </select>
-            </div>
-            <button onClick={confirmBooking} style={{ background: "#10233B" }} className="mt-3 text-white text-sm font-semibold px-4 py-2 rounded-sm flex items-center gap-1"><CalendarIcon size={14} /> Confirm booking</button>
+            {!showBookingForm ? (
+              <button onClick={() => setShowBookingForm(true)} style={{ background: "#10233B" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm flex items-center gap-1">
+                <CalendarIcon size={14} /> Book an appointment
+              </button>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <input type="date" value={bookingDraft.date} onChange={(e) => setBookingDraft({ ...bookingDraft, date: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#e3dbc8" }} />
+                  <select value={bookingDraft.time} onChange={(e) => setBookingDraft({ ...bookingDraft, time: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#e3dbc8" }}>
+                    <option value="">Time slot</option>
+                    {["08:00–10:00","10:00–12:00","12:00–14:00","14:00–16:00","16:00–18:00"].map((t) => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <button onClick={confirmBooking} style={{ background: "#FF6A13" }} className="mt-3 text-white text-sm font-semibold px-4 py-2 rounded-sm flex items-center gap-1"><CalendarIcon size={14} /> Confirm booking</button>
+              </>
+            )}
           </div>
         )}
 
-        {lead.status === "booked" && lead.booking && (
+        {lead.booking && lead.status !== "invoiced" && lead.status !== "paid" && (
           <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-4">
             <div className="text-sm flex items-center gap-2 mb-2"><Clock size={14} /> {lead.booking.date} · {lead.booking.time}</div>
-            <button onClick={markComplete} style={{ background: "#FF6A13" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm flex items-center gap-1"><CheckCircle2 size={14} /> Mark job complete & invoice</button>
+            {quoteDraft ? (
+              <button onClick={markComplete} style={{ background: "#FF6A13" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm flex items-center gap-1"><CheckCircle2 size={14} /> Mark job complete & invoice</button>
+            ) : (
+              <p className="text-xs" style={{ color: "#8b8474" }}>Add a quote above before invoicing this job.</p>
+            )}
           </div>
         )}
 

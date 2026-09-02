@@ -47,8 +47,70 @@ const SERVICES = [
   "General plumbing maintenance", "Gas fitting",
 ];
 
-const STATUS_LABEL = { new: "NEW ENQUIRY", quoted: "QUOTED", booked: "BOOKED", invoiced: "INVOICED", paid: "PAID" };
-const STATUS_COLOR = { new: "#FF6A13", quoted: "#5B6B7D", booked: "#10233B", invoiced: "#C2410C", paid: "#2F8F5B" };
+const STATUS_LABEL = { new: "NEW ENQUIRY", quoted: "QUOTED", booked: "BOOKED", invoiced: "INVOICED", paid: "PAID", declined: "DECLINED" };
+const STATUS_COLOR = { new: "#FF6A13", quoted: "#5B6B7D", booked: "#10233B", invoiced: "#C2410C", paid: "#2F8F5B", declined: "#8b8474" };
+
+const TERMS_TEXT = `Last updated: ${new Date().getFullYear()}
+
+TradeMate Ireland is a booking and quoting tool that connects customers with independent tradespeople. TradeMate is not itself a tradesperson, does not employ or supervise the tradespeople listed, and is not a party to any agreement between a customer and a tradesperson.
+
+WHO WE ARE
+TradeMate provides the platform only. All quotes, bookings, work performed, and payments are agreements directly between the customer and the tradesperson.
+
+TRADESPERSON RESPONSIBILITIES
+Tradespeople using this platform are solely responsible for the accuracy of their listing, the quotes they provide, the work they perform, and compliance with any licensing, insurance, or regulatory requirements applicable to their trade in Ireland.
+
+CUSTOMER RESPONSIBILITIES
+Customers are responsible for verifying a tradesperson's suitability for their job before booking, and for the accuracy of the information they submit (contact details, job description, address).
+
+PAYMENTS
+Card payments are processed by Stripe. TradeMate does not store card details. Disputes about the quality or completion of work are between the customer and the tradesperson; TradeMate does not adjudicate these disputes.
+
+LIMITATION OF LIABILITY
+TradeMate is provided "as is." To the maximum extent permitted by law, TradeMate is not liable for the acts, omissions, or work quality of any tradesperson listed on the platform, or for any loss arising from use of the platform.
+
+ACCOUNTS
+You are responsible for keeping your login credentials secure. One account should represent one real business or one real customer — do not create accounts on behalf of others without their consent.
+
+CHANGES
+These terms may be updated from time to time. Continued use of the platform after a change constitutes acceptance of the updated terms.
+
+CONTACT
+Questions about these terms can be directed to the business operating this platform.
+
+This is a general template and has not been reviewed by a lawyer. Before relying on it for a live commercial service, have it reviewed by a qualified solicitor familiar with Irish and EU consumer law.`;
+
+const PRIVACY_TEXT = `Last updated: ${new Date().getFullYear()}
+
+WHAT WE COLLECT
+- From tradespeople: name, email, business name, address/location, services offered, phone number (optional), and account password (stored securely, never in plain text).
+- From customers: name, phone number, address, job description, email (optional), and any photos you choose to upload.
+- Payment information is collected and processed directly by Stripe — TradeMate does not see or store your card details.
+
+WHY WE COLLECT IT
+To connect you with a tradesperson or customer, to send you updates about a job (by SMS and/or email), to process payments, and to operate the "find a tradesperson near me" feature (which uses either your device's location or an address you type in).
+
+WHO WE SHARE IT WITH
+- The tradesperson or customer relevant to your job.
+- Service providers who help us operate: Supabase (database and hosting), Stripe (payments), Twilio (SMS), Resend (email), Anthropic (AI-assisted quote drafting), and OpenStreetMap (address lookup). Each processes only what's needed to perform their function.
+- We do not sell personal data to third parties.
+
+YOUR RIGHTS (GDPR)
+If you are in the EU/EEA, you have the right to access, correct, or request deletion of your personal data. Contact the business operating this platform to make a request.
+
+DATA RETENTION
+Job and account data is kept for as long as your account is active, or as needed to comply with legal or accounting obligations.
+
+PHOTOS
+Photos you upload for a job enquiry are stored and are visible to the tradesperson you sent them to.
+
+COOKIES / LOCAL STORAGE
+This site uses your browser's local session storage to keep you logged in. No third-party advertising trackers are used.
+
+CONTACT
+Questions about this policy or your data can be directed to the business operating this platform.
+
+This is a general template and has not been reviewed by a lawyer. Before relying on it for a live commercial service handling real customer data, have it reviewed by a qualified solicitor familiar with GDPR and Irish data protection law.`;
 
 function slugify(name) {
   const letters = name.toUpperCase().replace(/[^A-Z ]/g, "").split(" ").filter(Boolean);
@@ -328,12 +390,13 @@ function GlobalStyle() {
 /* ================= TOP-LEVEL APP ================= */
 
 export default function App() {
-  const [phase, setPhase] = useState("loading"); // loading|role|pro-auth|pro-app|cust-lookup|cust-view|browse
+  const [phase, setPhase] = useState("loading"); // loading|role|pro-auth|pro-app|cust-lookup|cust-view|browse|reset-password|terms|privacy
   const [session, setSession] = useState(null);
   const [business, setBusiness] = useState(null);
   const [customerLead, setCustomerLead] = useState(null);
   const [customerBusinessName, setCustomerBusinessName] = useState(null);
   const [paymentReturn, setPaymentReturn] = useState(null); // { jobNo, outcome }
+  const [returnPhase, setReturnPhase] = useState("role"); // where to go back to after terms/privacy
 
   useEffect(() => {
     // Returning from Stripe Checkout? Show the result before anything else.
@@ -352,26 +415,29 @@ export default function App() {
       window.history.replaceState({}, "", window.location.pathname); // clean the URL
       supabase.auth.getSession().then(({ data: { session } }) => {
         setSession(session);
-        if (session) loadOwnedBusiness(session.user.id);
+        if (session) loadMyBusiness(session.user.id);
         else setPhase("role");
       });
-      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
-      return () => listener.subscription.unsubscribe();
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Password reset links land here with a PASSWORD_RECOVERY auth event
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
-      setPhase("role"); // always start here — session is checked later, only if they choose "I'm a tradesperson"
+      if (event === "PASSWORD_RECOVERY") setPhase("reset-password");
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+
+    if (!oauthReturn) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        setPhase((p) => (p === "loading" ? "role" : p)); // always start here — session is checked later, only if they choose "I'm a tradesperson"
+      });
+    }
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  const loadOwnedBusiness = async (userId) => {
-    const { data } = await supabase.from("businesses").select("*").eq("owner_id", userId).limit(1).maybeSingle();
-    if (data) { setBusiness(data); setPhase("pro-app"); }
+  const loadMyBusiness = async (userId) => {
+    const { data } = await supabase.rpc("get_my_businesses", { p_user_id: userId });
+    if (data && data.length > 0) { setBusiness(data[0]); setPhase("pro-app"); }
     else setPhase("pro-auth"); // logged in but no business yet — finish setup
   };
 
@@ -385,18 +451,22 @@ export default function App() {
     setPhase("role");
   };
   const goToStatus = (bizName, lead) => { setCustomerBusinessName(bizName); setCustomerLead(lead); setPhase("cust-view"); };
+  const openLegal = (page, fromPhase) => { setReturnPhase(fromPhase); setPhase(page); };
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#F6F1E7", color: "#1E1B16", minHeight: "100vh" }} className="w-full">
       <GlobalStyle />
       {phase === "loading" && <div className="flex items-center justify-center py-24 text-sm" style={{ color: "#5B6B7D" }}><Loader2 className="animate-spin mr-2" size={16} /> Loading…</div>}
-      {phase === "role" && <RoleSelect onPro={handleChoosePro} onCustomer={() => setPhase("cust-lookup")} onBrowse={() => setPhase("browse")} />}
-      {phase === "pro-auth" && <ProAuth session={session} onDone={(biz) => { setBusiness(biz); setPhase("pro-app"); }} onBack={() => setPhase("role")} />}
+      {phase === "role" && <RoleSelect onPro={handleChoosePro} onCustomer={() => setPhase("cust-lookup")} onBrowse={() => setPhase("browse")} onLegal={(p) => openLegal(p, "role")} />}
+      {phase === "pro-auth" && <ProAuth session={session} onDone={(biz) => { setBusiness(biz); setPhase("pro-app"); }} onBack={() => setPhase("role")} onLegal={(p) => openLegal(p, "pro-auth")} />}
       {phase === "pro-app" && business && <ProDashboard business={business} onLogout={logout} onBusinessUpdate={setBusiness} />}
       {phase === "cust-lookup" && <CustomerLookup onBack={() => setPhase("role")} onFound={goToStatus} />}
       {phase === "cust-view" && customerLead && <CustomerView businessName={customerBusinessName} lead={customerLead} onBack={() => setPhase("cust-lookup")} />}
-      {phase === "browse" && <BrowseTrades onBack={() => setPhase("role")} onViewStatus={goToStatus} />}
+      {phase === "browse" && <BrowseTrades onBack={() => setPhase("role")} onViewStatus={goToStatus} onLegal={(p) => openLegal(p, "browse")} />}
       {phase === "payment-result" && paymentReturn && <PaymentResult jobNo={paymentReturn.jobNo} outcome={paymentReturn.outcome} onDone={() => setPhase("role")} />}
+      {phase === "reset-password" && <ResetPassword onDone={() => setPhase("role")} />}
+      {phase === "terms" && <LegalPage title="Terms of Service" body={TERMS_TEXT} onBack={() => setPhase(returnPhase)} />}
+      {phase === "privacy" && <LegalPage title="Privacy Policy" body={PRIVACY_TEXT} onBack={() => setPhase(returnPhase)} />}
     </div>
   );
 }
@@ -443,9 +513,75 @@ function PaymentResult({ jobNo, outcome, onDone }) {
   );
 }
 
+function LegalPage({ title, body, onBack }) {
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-8">
+      <button onClick={onBack} className="flex items-center gap-1 text-sm mb-4" style={{ color: "#5B6B7D" }}><ArrowLeft size={14} /> Back</button>
+      <div className="tm-display text-lg mb-4" style={{ color: "#10233B" }}>{title.toUpperCase()}</div>
+      <div style={{ background: "white", border: "1px solid #e3dbc8" }} className="rounded-sm p-5">
+        <pre className="text-sm whitespace-pre-wrap" style={{ fontFamily: "'Inter', sans-serif", color: "#1E1B16", lineHeight: 1.6 }}>{body}</pre>
+      </div>
+    </div>
+  );
+}
+
+function LegalLinks({ onLegal }) {
+  return (
+    <div className="text-center mt-6 text-[11px]" style={{ color: "#8b8474" }}>
+      <button onClick={() => onLegal("terms")} className="underline">Terms of Service</button>
+      {" · "}
+      <button onClick={() => onLegal("privacy")} className="underline">Privacy Policy</button>
+    </div>
+  );
+}
+
+function ResetPassword({ onDone }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const submit = async () => {
+    setError("");
+    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (password !== confirm) { setError("Passwords don't match."); return; }
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    setBusy(false);
+    if (error) { setError(error.message); return; }
+    setDone(true);
+  };
+
+  if (done) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-10 text-center">
+        <CheckCircle2 size={40} color="#2F8F5B" className="mx-auto mb-3" />
+        <div className="tm-display text-lg mb-2" style={{ color: "#10233B" }}>PASSWORD UPDATED</div>
+        <button onClick={onDone} style={{ background: "#FF6A13" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm mt-2">Continue</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-md mx-auto px-4 py-10">
+      <div className="tm-display text-lg mb-1" style={{ color: "#10233B" }}>SET A NEW PASSWORD</div>
+      <p className="text-sm mb-4" style={{ color: "#5B6B7D" }}>Choose a new password for your account.</p>
+      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#5B6B7D" }}>New password</label>
+      <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="tm-input" placeholder="At least 6 characters" />
+      <label className="text-xs font-semibold uppercase tracking-wide mt-3 block" style={{ color: "#5B6B7D" }}>Confirm password</label>
+      <input value={confirm} onChange={(e) => setConfirm(e.target.value)} type="password" className="tm-input" />
+      {error && <p className="text-xs mt-2" style={{ color: "#C2410C" }}>{error}</p>}
+      <button onClick={submit} disabled={busy} style={{ background: "#FF6A13" }} className="w-full text-white font-semibold py-2.5 rounded-sm mt-4 flex items-center justify-center gap-2">
+        {busy ? <Loader2 className="animate-spin" size={16} /> : null} Update password
+      </button>
+    </div>
+  );
+}
+
 /* ---------------- Role select ---------------- */
 
-function RoleSelect({ onPro, onCustomer, onBrowse }) {
+function RoleSelect({ onPro, onCustomer, onBrowse, onLegal }) {
   return (
     <div className="max-w-md mx-auto px-4 py-10">
       <div className="text-center mb-8">
@@ -474,27 +610,41 @@ function RoleSelect({ onPro, onCustomer, onBrowse }) {
         <div><div className="font-semibold text-sm">Check on a job I already booked</div><div className="text-xs" style={{ color: "#5B6B7D" }}>Look up every job with just your phone number</div></div>
         <ChevronRight className="ml-auto" size={18} color="#5B6B7D" />
       </button>
+      <LegalLinks onLegal={onLegal} />
     </div>
   );
 }
 
 /* ---------------- Professional auth (real Supabase Auth) ---------------- */
 
-function ProAuth({ session, onDone, onBack }) {
-  const [mode, setMode] = useState("login"); // login|signup|setup — always start at login
+function ProAuth({ session, onDone, onBack, onLegal }) {
+  const [mode, setMode] = useState("login"); // login|signup|setup|forgot — always start at login
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [bizName, setBizName] = useState("");
   const [location, setLocation] = useState(null); // {label, lat, lng}
   const [services, setServices] = useState([]);
+  const [agreedTerms, setAgreedTerms] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const toggleService = (s) => setServices((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+
+  const sendResetEmail = async () => {
+    setError("");
+    if (!email.trim()) { setError("Enter your email first."); return; }
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin });
+    setBusy(false);
+    if (error) { setError(error.message); return; }
+    setResetSent(true);
+  };
 
   const submitAuth = async () => {
     setError(""); setBusy(true);
     if (mode === "signup") {
+      if (!agreedTerms) { setBusy(false); setError("Please agree to the Terms and Privacy Policy to continue."); return; }
       const { data: signUpData, error } = await supabase.auth.signUp({ email, password });
       setBusy(false);
       if (error) { setError(error.message); return; }
@@ -509,9 +659,9 @@ function ProAuth({ session, onDone, onBack }) {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) { setBusy(false); setError(signInError.message); return; }
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: biz } = await supabase.from("businesses").select("*").eq("owner_id", user.id).limit(1).maybeSingle();
+      const { data: myBusinesses } = await supabase.rpc("get_my_businesses", { p_user_id: user.id });
       setBusy(false);
-      if (biz) onDone(biz);
+      if (myBusinesses && myBusinesses.length > 0) onDone(myBusinesses[0]);
       else setMode("setup"); // logged in, but no business yet — finish setup
     }
   };
@@ -543,7 +693,27 @@ function ProAuth({ session, onDone, onBack }) {
     <div className="max-w-md mx-auto px-4 py-8">
       <button onClick={onBack} className="flex items-center gap-1 text-sm mb-4" style={{ color: "#5B6B7D" }}><ArrowLeft size={14} /> Back</button>
 
-      {mode !== "setup" && (
+      {mode === "forgot" && (
+        <>
+          <div className="tm-display text-lg mb-1" style={{ color: "#10233B" }}>RESET PASSWORD</div>
+          {resetSent ? (
+            <p className="text-sm" style={{ color: "#5B6B7D" }}>Check your email for a reset link.</p>
+          ) : (
+            <>
+              <p className="text-sm mb-3" style={{ color: "#5B6B7D" }}>Enter your email and we'll send a reset link.</p>
+              <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#5B6B7D" }}>Email</label>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="tm-input" placeholder="you@business.ie" />
+              {error && <p className="text-xs mt-2" style={{ color: "#C2410C" }}>{error}</p>}
+              <button onClick={sendResetEmail} disabled={busy} style={{ background: "#FF6A13" }} className="w-full text-white font-semibold py-2.5 rounded-sm mt-4 flex items-center justify-center gap-2">
+                {busy ? <Loader2 className="animate-spin" size={16} /> : null} Send reset link
+              </button>
+            </>
+          )}
+          <button onClick={() => { setMode("login"); setError(""); setResetSent(false); }} className="text-xs mt-4 underline" style={{ color: "#5B6B7D" }}>Back to log in</button>
+        </>
+      )}
+
+      {mode !== "setup" && mode !== "forgot" && (
         <>
           <div className="flex mb-4 rounded-sm overflow-hidden border" style={{ borderColor: "#e3dbc8" }}>
             {["login", "signup"].map((m) => (
@@ -557,6 +727,15 @@ function ProAuth({ session, onDone, onBack }) {
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="tm-input" placeholder="you@business.ie" />
           <label className="text-xs font-semibold uppercase tracking-wide mt-3 block" style={{ color: "#5B6B7D" }}>Password</label>
           <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="tm-input" placeholder="At least 6 characters" />
+          {mode === "login" && (
+            <button onClick={() => { setMode("forgot"); setError(""); }} className="text-xs mt-1 underline" style={{ color: "#5B6B7D" }}>Forgot password?</button>
+          )}
+          {mode === "signup" && (
+            <label className="flex items-start gap-2 text-xs mt-3" style={{ color: "#5B6B7D" }}>
+              <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} className="mt-0.5" />
+              <span>I agree to the Terms of Service and Privacy Policy</span>
+            </label>
+          )}
           {error && <p className="text-xs mt-2" style={{ color: "#C2410C" }}>{error}</p>}
           <button onClick={submitAuth} disabled={busy} style={{ background: "#FF6A13" }} className="w-full text-white font-semibold py-2.5 rounded-sm mt-4 flex items-center justify-center gap-2">
             {busy ? <Loader2 className="animate-spin" size={16} /> : null}
@@ -576,6 +755,7 @@ function ProAuth({ session, onDone, onBack }) {
             <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3c-7.7 0-14.4 4.4-17.7 11.7z"/><path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.8 14.1-5.4l-6.5-5.5C29.5 35.7 26.9 36.5 24 36.5c-5.3 0-9.7-3.4-11.3-8.1l-6.6 5.1C9.5 40.4 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.6l6.5 5.5C41.5 36.1 45 30.8 45 24c0-1.4-.1-2.7-.4-3.5z"/></svg>
             Continue with Google
           </button>
+          <LegalLinks onLegal={onLegal} />
         </>
       )}
 
@@ -602,7 +782,7 @@ function ProAuth({ session, onDone, onBack }) {
 
 /* ---------------- Browse trades (public) ---------------- */
 
-function BrowseTrades({ onBack, onViewStatus }) {
+function BrowseTrades({ onBack, onViewStatus, onLegal }) {
   const [businesses, setBusinesses] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [myLoc, setMyLoc] = useState(null);
@@ -611,10 +791,18 @@ function BrowseTrades({ onBack, onViewStatus }) {
   const [serviceFilter, setServiceFilter] = useState([]);
   const [enquiryBiz, setEnquiryBiz] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
+  const [ratings, setRatings] = useState({});
 
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("businesses").select("*").not("area", "is", null);
+      const { data: reviewData } = await supabase.from("reviews").select("business_id, rating");
+      const ratingsByBusiness = {};
+      (reviewData || []).forEach((r) => {
+        ratingsByBusiness[r.business_id] = ratingsByBusiness[r.business_id] || [];
+        ratingsByBusiness[r.business_id].push(r.rating);
+      });
+      setRatings(ratingsByBusiness);
       setBusinesses(data || []);
       setLoaded(true);
     })();
@@ -693,6 +881,13 @@ function BrowseTrades({ onBack, onViewStatus }) {
               <div className="font-semibold text-sm" style={{ color: "#10233B" }}>{b.name}</div>
               {b.distance != null && <div className="tm-mono text-xs shrink-0" style={{ color: "#5B6B7D" }}>{b.distance.toFixed(1)} km away</div>}
             </div>
+            {ratings[b.id] && ratings[b.id].length > 0 && (
+              <div className="flex items-center gap-1 mb-1 text-xs" style={{ color: "#8b8474" }}>
+                <span style={{ color: "#FF6A13" }}>★</span>
+                <span className="font-semibold" style={{ color: "#1E1B16" }}>{(ratings[b.id].reduce((a, c) => a + c, 0) / ratings[b.id].length).toFixed(1)}</span>
+                <span>({ratings[b.id].length} review{ratings[b.id].length > 1 ? "s" : ""})</span>
+              </div>
+            )}
             <div className="text-xs mb-2 flex items-center gap-1" style={{ color: "#5B6B7D" }}><MapPin size={11} /> {b.area}</div>
             {b.blurb && <p className="text-sm mb-2">{b.blurb}</p>}
             {(b.services || []).length > 0 && (
@@ -707,6 +902,7 @@ function BrowseTrades({ onBack, onViewStatus }) {
         <PublicEnquiryModal business={enquiryBiz} onClose={() => setEnquiryBiz(null)}
           onSubmitted={(lead) => { setEnquiryBiz(null); setConfirmation({ business: enquiryBiz, lead }); }} />
       )}
+      <LegalLinks onLegal={onLegal} />
     </div>
   );
 }
@@ -762,12 +958,15 @@ function PhotoThumbnails({ photos }) {
 function PublicEnquiryModal({ business, onClose, onSubmitted }) {
   const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", problem: "" });
   const [photos, setPhotos] = useState([]);
+  const [website, setWebsite] = useState(""); // honeypot — real users never fill this in
+  const [agreedTerms, setAgreedTerms] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const canSubmit = form.name && form.phone && form.address && form.problem;
+  const canSubmit = form.name && form.phone && form.address && form.problem && agreedTerms;
 
   const submit = async () => {
+    if (website) { onSubmitted({ job_no: "—" }); return; } // bot caught by honeypot — pretend success, do nothing
     setSaving(true); setError("");
     try {
       const photoUrls = photos.length ? await uploadPhotos(photos) : [];
@@ -800,6 +999,12 @@ function PublicEnquiryModal({ business, onClose, onSubmitted }) {
           <Field label="Address"><input value={form.address} onChange={(e) => set("address", e.target.value)} className="tm-input" placeholder="5km from Galway city centre" /></Field>
           <Field label="What's the problem?"><textarea value={form.problem} onChange={(e) => set("problem", e.target.value)} rows={3} className="tm-input" placeholder="Boiler isn't firing up, no hot water since this morning" /></Field>
           <PhotoPicker files={photos} onChange={setPhotos} />
+          <input type="text" value={website} onChange={(e) => setWebsite(e.target.value)} tabIndex={-1} autoComplete="off"
+            style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }} aria-hidden="true" />
+          <label className="flex items-start gap-2 text-xs" style={{ color: "#5B6B7D" }}>
+            <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} className="mt-0.5" />
+            <span>I agree to the Terms of Service and Privacy Policy</span>
+          </label>
           {error && <p className="text-xs" style={{ color: "#C2410C" }}>{error}</p>}
           <button disabled={!canSubmit || saving} onClick={submit} style={{ background: canSubmit ? "#FF6A13" : "#d8d0bd" }} className="w-full text-white font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2">
             {saving ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />} Send request
@@ -872,6 +1077,18 @@ function CustomerView({ businessName, lead: initialLead, onBack }) {
   const [sending, setSending] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
   const [payError, setPayError] = useState("");
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
+  const submitReview = async () => {
+    if (reviewRating < 1) return;
+    setReviewSaving(true);
+    const { error } = await supabase.rpc("submit_review", { p_lead_id: lead.id, p_phone: lead.phone, p_rating: reviewRating, p_comment: reviewComment || null });
+    setReviewSaving(false);
+    if (!error) setReviewSubmitted(true);
+  };
 
   const payNow = async () => {
     setPayLoading(true); setPayError("");
@@ -947,7 +1164,25 @@ function CustomerView({ businessName, lead: initialLead, onBack }) {
               <Download size={13} /> Download PDF
             </button>
             {lead.invoice.paid ? (
-              <div className="font-semibold text-xs mt-1" style={{ color: "#2F8F5B" }}>Paid — thank you</div>
+              <>
+                <div className="font-semibold text-xs mt-1" style={{ color: "#2F8F5B" }}>Paid — thank you</div>
+                {reviewSubmitted ? (
+                  <p className="text-xs mt-3" style={{ color: "#5B6B7D" }}>Thanks for your review!</p>
+                ) : (
+                  <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3 mt-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5B6B7D" }}>How was the job?</div>
+                    <div className="flex gap-1 mb-2">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button key={n} onClick={() => setReviewRating(n)} style={{ color: n <= reviewRating ? "#FF6A13" : "#e3dbc8", fontSize: 22, lineHeight: 1 }}>★</button>
+                      ))}
+                    </div>
+                    <textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} rows={2} className="tm-input" placeholder="Optional comment about the work…" />
+                    <button onClick={submitReview} disabled={reviewRating < 1 || reviewSaving} style={{ background: reviewRating >= 1 ? "#FF6A13" : "#d8d0bd" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm mt-2 flex items-center gap-2">
+                      {reviewSaving ? <Loader2 className="animate-spin" size={14} /> : null} Submit review
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <>
                 <div className="font-semibold text-xs mt-1 mb-2" style={{ color: "#C2410C" }}>Payment due</div>
@@ -1042,6 +1277,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
 
       <div className="p-3 max-w-5xl mx-auto">
         {!loaded && <div className="flex items-center justify-center py-16 text-sm" style={{ color: "#5B6B7D" }}><Loader2 className="animate-spin mr-2" size={16} /> Loading your jobs…</div>}
+        {loaded && tab === "inbox" && !selected && <StatsBar leads={leads} theme={theme} />}
         {loaded && tab === "inbox" && !selected && <Inbox leads={leads} onSelect={setSelectedId} onNew={() => setShowNewLead(true)} />}
         {loaded && tab === "inbox" && selected && <LeadDetail lead={selected} businessName={business.name} onBack={() => setSelectedId(null)} onPatch={(p) => patchLead(selected.id, p)} />}
         {loaded && tab === "calendar" && <CalendarView leads={leads} />}
@@ -1062,6 +1298,9 @@ function ProfileModal({ business, onClose, onSave }) {
   const [notifyPhone, setNotifyPhone] = useState(business.notify_phone || "");
   const [themeColor, setThemeColor] = useState(business.theme_color || "#FF6A13");
   const [saving, setSaving] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState(null); // {ok, text}
   const toggleService = (s) => setServices((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
   const swatches = ["#FF6A13", "#2F8F5B", "#1D4ED8", "#C2410C", "#7C3AED", "#0F766E", "#DB2777"];
 
@@ -1069,6 +1308,16 @@ function ProfileModal({ business, onClose, onSave }) {
     setSaving(true);
     await onSave({ area: location.label, lat: location.lat, lng: location.lng, services, blurb, notify_phone: notifyPhone || null, theme_color: themeColor });
     setSaving(false);
+  };
+
+  const inviteTeammate = async () => {
+    if (!inviteEmail.trim()) return;
+    setInviting(true); setInviteMsg(null);
+    const { data, error } = await supabase.rpc("invite_team_member", { p_business_id: business.id, p_email: inviteEmail.trim() });
+    setInviting(false);
+    if (error) { setInviteMsg({ ok: false, text: error.message }); return; }
+    if (data?.success) { setInviteMsg({ ok: true, text: `${inviteEmail} added to your team.` }); setInviteEmail(""); }
+    else setInviteMsg({ ok: false, text: data?.error || "Couldn't add that person." });
   };
 
   return (
@@ -1101,6 +1350,18 @@ function ProfileModal({ business, onClose, onSave }) {
             <input value={notifyPhone} onChange={(e) => setNotifyPhone(e.target.value)} className="tm-input" placeholder="087 123 4567" />
             <p className="text-[11px] mt-1" style={{ color: "#8b8474" }}>You'll always get email alerts at your login email. Add a phone here for SMS too.</p>
           </Field>
+          <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3">
+            <Field label="Add a team member">
+              <p className="text-[11px] mt-1 mb-1" style={{ color: "#8b8474" }}>They need a TradeMate account already (any email that's signed up before) — this gives them full access to your jobs.</p>
+              <div className="flex gap-2">
+                <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} type="email" className="tm-input !mt-0 flex-1" placeholder="teammate@email.com" />
+                <button onClick={inviteTeammate} disabled={inviting} style={{ background: "#10233B" }} className="text-white text-xs font-semibold px-3 rounded-sm shrink-0">
+                  {inviting ? <Loader2 className="animate-spin" size={14} /> : "Add"}
+                </button>
+              </div>
+              {inviteMsg && <p className="text-xs mt-1" style={{ color: inviteMsg.ok ? "#2F8F5B" : "#C2410C" }}>{inviteMsg.text}</p>}
+            </Field>
+          </div>
           <button onClick={save} disabled={saving} style={{ background: themeColor }} className="w-full text-white font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2">
             {saving ? <Loader2 className="animate-spin" size={16} /> : null} Save profile
           </button>
@@ -1113,6 +1374,11 @@ function ProfileModal({ business, onClose, onSave }) {
 /* ---------------- Inbox ---------------- */
 
 function Inbox({ leads, onSelect, onNew }) {
+  const [showDeclined, setShowDeclined] = useState(false);
+  const active = leads.filter((l) => l.status !== "declined");
+  const declined = leads.filter((l) => l.status === "declined");
+  const visible = showDeclined ? leads : active;
+
   if (leads.length === 0) {
     return (
       <div className="text-center py-16 px-4">
@@ -1123,10 +1389,11 @@ function Inbox({ leads, onSelect, onNew }) {
     );
   }
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {leads.map((lead) => (
+    <div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {visible.map((lead) => (
         <button key={lead.id} onClick={() => onSelect(lead.id)} className="text-left">
-          <div style={{ background: "white", border: "1px solid #e3dbc8" }} className="rounded-sm shadow-sm px-4 py-3 pt-4 relative hover:shadow-md transition">
+          <div style={{ background: "white", border: "1px solid #e3dbc8", opacity: lead.status === "declined" ? 0.6 : 1 }} className="rounded-sm shadow-sm px-4 py-3 pt-4 relative hover:shadow-md transition">
             <PerforatedTop />
             <div className="flex items-start justify-between mb-1">
               <div className="tm-mono text-xs" style={{ color: "#5B6B7D" }}>{lead.job_no}</div>
@@ -1138,10 +1405,17 @@ function Inbox({ leads, onSelect, onNew }) {
             <div className="flex items-center justify-between"><ChannelBadge channel={lead.channel} /><ChevronRight size={16} color="#5B6B7D" /></div>
           </div>
         </button>
-      ))}
+        ))}
+      </div>
+      {declined.length > 0 && (
+        <button onClick={() => setShowDeclined((s) => !s)} className="text-xs mt-3" style={{ color: "#8b8474" }}>
+          {showDeclined ? "Hide declined" : `Show declined (${declined.length})`}
+        </button>
+      )}
     </div>
   );
 }
+
 
 /* ---------------- New Lead Modal (internal) ---------------- */
 
@@ -1250,13 +1524,34 @@ function LeadDetail({ lead, businessName, onBack, onPatch }) {
     notifyCustomer(lead.id, `Job complete! Your invoice is ready: €${total}. Pay online from your job status page.`);
   };
   const markPaid = () => onPatch({ status: "paid", invoice: { ...lead.invoice, paid: true, paidAt: new Date().toISOString() } });
+  const declineLead = () => {
+    if (!window.confirm("Decline this enquiry? The customer won't be notified automatically.")) return;
+    onPatch({ status: "declined" });
+  };
+  const [rescheduling, setRescheduling] = useState(false);
+  const cancelBooking = () => {
+    if (!window.confirm("Cancel this booking? The job will go back to unbooked.")) return;
+    onPatch({ booking: null, status: lead.quote ? "quoted" : "new" });
+    notifyCustomer(lead.id, `Your appointment for job ${lead.job_no} has been cancelled. We'll be in touch to rebook.`);
+  };
+  const saveReschedule = () => {
+    if (!bookingDraft.date || !bookingDraft.time) return;
+    onPatch({ booking: bookingDraft });
+    setRescheduling(false);
+    notifyCustomer(lead.id, `Your appointment has been rescheduled to ${bookingDraft.date} at ${bookingDraft.time}.`);
+  };
 
   return (
     <div style={{ background: "white", border: "1px solid #e3dbc8" }} className="rounded-sm overflow-hidden">
       <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid #e3dbc8" }}>
         <button onClick={onBack}><ArrowLeft size={18} color="#5B6B7D" /></button>
         <div className="tm-mono text-xs" style={{ color: "#5B6B7D" }}>{lead.job_no}</div>
-        <div className="ml-auto"><Stamp status={lead.status} /></div>
+        <div className="ml-auto flex items-center gap-2">
+          {!["invoiced", "paid", "declined"].includes(lead.status) && (
+            <button onClick={declineLead} className="text-xs" style={{ color: "#8b8474" }}>Decline</button>
+          )}
+          <Stamp status={lead.status} />
+        </div>
       </div>
       <div className="p-4 space-y-4">
         <div>
@@ -1338,6 +1633,25 @@ function LeadDetail({ lead, businessName, onBack, onPatch }) {
         {lead.booking && lead.status !== "invoiced" && lead.status !== "paid" && (
           <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-4">
             <div className="text-sm flex items-center gap-2 mb-2"><Clock size={14} /> {lead.booking.date} · {lead.booking.time}</div>
+            {!rescheduling ? (
+              <div className="flex gap-2 mb-3">
+                <button onClick={() => { setBookingDraft(lead.booking); setRescheduling(true); }} className="text-xs font-semibold px-3 py-1.5 rounded-sm" style={{ background: "white", border: "1px solid #e3dbc8", color: "#5B6B7D" }}>Reschedule</button>
+                <button onClick={cancelBooking} className="text-xs font-semibold px-3 py-1.5 rounded-sm" style={{ background: "white", border: "1px solid #e3dbc8", color: "#C2410C" }}>Cancel booking</button>
+              </div>
+            ) : (
+              <div className="mb-3">
+                <div className="flex gap-2">
+                  <input type="date" value={bookingDraft.date} onChange={(e) => setBookingDraft({ ...bookingDraft, date: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#e3dbc8" }} />
+                  <select value={bookingDraft.time} onChange={(e) => setBookingDraft({ ...bookingDraft, time: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#e3dbc8" }}>
+                    {["08:00–10:00","10:00–12:00","12:00–14:00","14:00–16:00","16:00–18:00"].map((t) => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button onClick={saveReschedule} style={{ background: "#10233B" }} className="text-white text-xs font-semibold px-3 py-1.5 rounded-sm">Save new time</button>
+                  <button onClick={() => setRescheduling(false)} className="text-xs" style={{ color: "#8b8474" }}>Cancel</button>
+                </div>
+              </div>
+            )}
             {quoteDraft ? (
               <button onClick={markComplete} style={{ background: "#FF6A13" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm flex items-center gap-1"><CheckCircle2 size={14} /> Mark job complete & invoice</button>
             ) : (
@@ -1529,6 +1843,35 @@ function WeekList({ anchorDate, byDate }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function StatsBar({ leads, theme }) {
+  const now = new Date();
+  const thisMonth = leads.filter((l) => {
+    const d = new Date(l.created_at);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const enquiries = thisMonth.length;
+  const invoicedTotal = thisMonth.filter((l) => l.invoice).reduce((s, l) => s + (l.invoice.total || 0), 0);
+  const won = thisMonth.filter((l) => ["booked", "invoiced", "paid"].includes(l.status)).length;
+  const conversion = enquiries > 0 ? Math.round((won / enquiries) * 100) : 0;
+
+  const stats = [
+    { label: "Enquiries this month", value: enquiries },
+    { label: "Invoiced this month", value: `€${invoicedTotal}` },
+    { label: "Conversion rate", value: `${conversion}%` },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 gap-2 mb-3">
+      {stats.map((s) => (
+        <div key={s.label} style={{ background: "white", border: "1px solid #e3dbc8", borderTop: `3px solid ${theme}` }} className="rounded-sm px-3 py-2">
+          <div className="tm-mono text-lg" style={{ color: "#10233B" }}>{s.value}</div>
+          <div className="text-[10px] uppercase tracking-wide" style={{ color: "#8b8474" }}>{s.label}</div>
+        </div>
+      ))}
     </div>
   );
 }

@@ -347,6 +347,18 @@ export default function App() {
       return;
     }
 
+    const oauthReturn = params.get("oauth_return");
+    if (oauthReturn) {
+      window.history.replaceState({}, "", window.location.pathname); // clean the URL
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        if (session) loadOwnedBusiness(session.user.id);
+        else setPhase("role");
+      });
+      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+      return () => listener.subscription.unsubscribe();
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setPhase("role"); // always start here — session is checked later, only if they choose "I'm a tradesperson"
@@ -459,7 +471,7 @@ function RoleSelect({ onPro, onCustomer, onBrowse }) {
 
       <button onClick={onCustomer} style={{ background: "white", border: "1.5px solid #e3dbc8" }} className="w-full rounded-sm p-4 flex items-center gap-3 text-left">
         <UserRound size={22} color="#10233B" />
-        <div><div className="font-semibold text-sm">Check on a job I already booked</div><div className="text-xs" style={{ color: "#5B6B7D" }}>Look up with your job number & phone</div></div>
+        <div><div className="font-semibold text-sm">Check on a job I already booked</div><div className="text-xs" style={{ color: "#5B6B7D" }}>Look up every job with just your phone number</div></div>
         <ChevronRight className="ml-auto" size={18} color="#5B6B7D" />
       </button>
     </div>
@@ -549,6 +561,20 @@ function ProAuth({ session, onDone, onBack }) {
           <button onClick={submitAuth} disabled={busy} style={{ background: "#FF6A13" }} className="w-full text-white font-semibold py-2.5 rounded-sm mt-4 flex items-center justify-center gap-2">
             {busy ? <Loader2 className="animate-spin" size={16} /> : null}
             {mode === "login" ? "Log in" : "Create account"}
+          </button>
+
+          <div className="flex items-center gap-2 my-4">
+            <div className="flex-1 h-px" style={{ background: "#e3dbc8" }} />
+            <span className="text-[11px] uppercase tracking-wide" style={{ color: "#8b8474" }}>or</span>
+            <div className="flex-1 h-px" style={{ background: "#e3dbc8" }} />
+          </div>
+          <button
+            onClick={() => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}?oauth_return=1` } })}
+            style={{ background: "white", border: "1.5px solid #e3dbc8" }}
+            className="w-full font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2 text-sm"
+          >
+            <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3c-7.7 0-14.4 4.4-17.7 11.7z"/><path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.8 14.1-5.4l-6.5-5.5C29.5 35.7 26.9 36.5 24 36.5c-5.3 0-9.7-3.4-11.3-8.1l-6.6 5.1C9.5 40.4 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.6l6.5 5.5C41.5 36.1 45 30.8 45 24c0-1.4-.1-2.7-.4-3.5z"/></svg>
+            Continue with Google
           </button>
         </>
       )}
@@ -661,7 +687,7 @@ function BrowseTrades({ onBack, onViewStatus }) {
 
       <div className="space-y-3">
         {listed.map((b) => (
-          <div key={b.id} style={{ background: "white", border: "1px solid #e3dbc8" }} className="rounded-sm p-4 pt-5 relative">
+          <div key={b.id} style={{ background: "white", border: "1px solid #e3dbc8", borderLeft: `4px solid ${b.theme_color || "#FF6A13"}` }} className="rounded-sm p-4 pt-5 relative">
             <PerforatedTop />
             <div className="flex items-start justify-between mb-1">
               <div className="font-semibold text-sm" style={{ color: "#10233B" }}>{b.name}</div>
@@ -672,7 +698,7 @@ function BrowseTrades({ onBack, onViewStatus }) {
             {(b.services || []).length > 0 && (
               <div className="flex flex-wrap gap-1 mb-3">{b.services.map((s) => <span key={s} className="text-[11px] px-1.5 py-0.5 rounded-sm" style={{ background: "#F6F1E7", color: "#5B6B7D" }}>{s}</span>)}</div>
             )}
-            <button onClick={() => setEnquiryBiz(b)} style={{ background: "#FF6A13" }} className="text-white text-xs font-semibold px-3 py-2 rounded-sm">Request a quote</button>
+            <button onClick={() => setEnquiryBiz(b)} style={{ background: b.theme_color || "#FF6A13" }} className="text-white text-xs font-semibold px-3 py-2 rounded-sm">Request a quote</button>
           </div>
         ))}
       </div>
@@ -787,34 +813,55 @@ function PublicEnquiryModal({ business, onClose, onSubmitted }) {
 /* ---------------- Customer lookup + view (public) ---------------- */
 
 function CustomerLookup({ onBack, onFound }) {
-  const [jobNo, setJobNo] = useState("");
   const [phone, setPhone] = useState("");
+  const [results, setResults] = useState(null); // null = not searched yet
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
-    setError("");
-    if (!jobNo.trim() || !phone.trim()) { setError("Enter both your job number and phone number."); return; }
+    setError(""); setResults(null);
+    if (!phone.trim()) { setError("Enter your phone number."); return; }
     setBusy(true);
-    const { data, error } = await supabase.rpc("get_job_status", { p_job_no: jobNo.trim(), p_phone: phone.trim() });
+    const { data, error } = await supabase.rpc("get_jobs_by_phone", { p_phone: phone.trim() });
     setBusy(false);
-    if (error || !data) { setError("No job matches that job number and phone number."); return; }
-    onFound(data.business.name, data.lead);
+    if (error) { setError("Something went wrong — please try again."); return; }
+    setResults(data || []);
   };
 
   return (
     <div className="max-w-md mx-auto px-4 py-8">
       <button onClick={onBack} className="flex items-center gap-1 text-sm mb-4" style={{ color: "#5B6B7D" }}><ArrowLeft size={14} /> Back</button>
-      <div className="tm-display text-lg mb-1" style={{ color: "#10233B" }}>CHECK YOUR JOB</div>
-      <p className="text-sm mb-4" style={{ color: "#5B6B7D" }}>Enter the job number your tradesperson gave you, plus your phone number.</p>
-      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#5B6B7D" }}>Job number</label>
-      <input value={jobNo} onChange={(e) => setJobNo(e.target.value)} className="tm-input tm-mono" placeholder="BYR-0007" />
-      <label className="text-xs font-semibold uppercase tracking-wide mt-3 block" style={{ color: "#5B6B7D" }}>Phone number</label>
-      <input value={phone} onChange={(e) => setPhone(e.target.value)} className="tm-input" placeholder="087 123 4567" />
+      <div className="tm-display text-lg mb-1" style={{ color: "#10233B" }}>CHECK YOUR JOBS</div>
+      <p className="text-sm mb-4" style={{ color: "#5B6B7D" }}>Enter your phone number to see every job you've requested — across any tradesperson.</p>
+      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#5B6B7D" }}>Phone number</label>
+      <div className="flex gap-2 mt-1">
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} className="tm-input !mt-0 flex-1" placeholder="087 123 4567" />
+        <button onClick={submit} disabled={busy} style={{ background: "#FF6A13" }} className="text-white font-semibold px-4 rounded-sm flex items-center justify-center shrink-0">
+          {busy ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
+        </button>
+      </div>
       {error && <p className="text-xs mt-2" style={{ color: "#C2410C" }}>{error}</p>}
-      <button onClick={submit} disabled={busy} style={{ background: "#FF6A13" }} className="w-full text-white font-semibold py-2.5 rounded-sm mt-4 flex items-center justify-center gap-2">
-        {busy ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />} Check status
-      </button>
+
+      {results && results.length === 0 && (
+        <p className="text-sm mt-6 text-center" style={{ color: "#5B6B7D" }}>No jobs found for that number.</p>
+      )}
+
+      {results && results.length > 0 && (
+        <div className="mt-6 space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "#5B6B7D" }}>{results.length} job{results.length > 1 ? "s" : ""} found</div>
+          {results.map(({ lead, business_name }) => (
+            <button key={lead.id} onClick={() => onFound(business_name, lead)} className="w-full text-left">
+              <div style={{ background: "white", border: "1px solid #e3dbc8" }} className="rounded-sm px-4 py-3 flex items-center justify-between">
+                <div>
+                  <div className="tm-mono text-xs" style={{ color: "#5B6B7D" }}>{lead.job_no} · {business_name}</div>
+                  <div className="text-sm font-semibold truncate max-w-[220px]">{lead.problem}</div>
+                </div>
+                <Stamp status={lead.status} />
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -926,6 +973,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
   const [showNewLead, setShowNewLead] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const theme = business.theme_color || "#FF6A13";
 
   const fetchLeads = useCallback(async () => {
     const { data } = await supabase.from("leads").select("*").eq("business_id", business.id).order("created_at", { ascending: false });
@@ -962,14 +1010,14 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
     <div>
       <div style={{ background: "#10233B" }} className="text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div style={{ background: "#FF6A13" }} className="w-8 h-8 rounded flex items-center justify-center rotate-[-3deg]"><Wrench size={18} color="#10233B" strokeWidth={2.5} /></div>
+          <div style={{ background: theme }} className="w-8 h-8 rounded flex items-center justify-center rotate-[-3deg]"><Wrench size={18} color="#10233B" strokeWidth={2.5} /></div>
           <div>
             <div className="tm-display text-sm tracking-tight leading-none">{business.name.toUpperCase()}</div>
             <div className="text-[10px] tracking-[0.2em] text-white/60 leading-none mt-1">TRADEMATE WORKSPACE</div>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setShowNewLead(true)} style={{ background: "#FF6A13" }} className="text-white text-xs font-semibold px-3 py-2 rounded-sm flex items-center gap-1"><Plus size={14} strokeWidth={3} /> New</button>
+          <button onClick={() => setShowNewLead(true)} style={{ background: theme }} className="text-white text-xs font-semibold px-3 py-2 rounded-sm flex items-center gap-1"><Plus size={14} strokeWidth={3} /> New</button>
           <button onClick={() => setShowProfile(true)} title="Public profile" className="text-white/70 p-2"><Settings size={16} /></button>
           <button onClick={onLogout} title="Log out" className="text-white/70 p-2"><LogOut size={16} /></button>
         </div>
@@ -985,7 +1033,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
           const Icon = t.icon; const active = tab === t.id;
           return (
             <button key={t.id} onClick={() => { setTab(t.id); setSelectedId(null); }} className="flex-1 flex flex-col items-center gap-1 py-2 text-[11px] font-semibold uppercase tracking-wide"
-              style={{ color: active ? "#10233B" : "#8b8474", borderBottom: active ? "3px solid #FF6A13" : "3px solid transparent" }}>
+              style={{ color: active ? "#10233B" : "#8b8474", borderBottom: active ? `3px solid ${theme}` : "3px solid transparent" }}>
               <Icon size={16} strokeWidth={active ? 2.6 : 2} />{t.label}
             </button>
           );
@@ -1012,12 +1060,14 @@ function ProfileModal({ business, onClose, onSave }) {
   const [services, setServices] = useState(business.services || []);
   const [blurb, setBlurb] = useState(business.blurb || "");
   const [notifyPhone, setNotifyPhone] = useState(business.notify_phone || "");
+  const [themeColor, setThemeColor] = useState(business.theme_color || "#FF6A13");
   const [saving, setSaving] = useState(false);
   const toggleService = (s) => setServices((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+  const swatches = ["#FF6A13", "#2F8F5B", "#1D4ED8", "#C2410C", "#7C3AED", "#0F766E", "#DB2777"];
 
   const save = async () => {
     setSaving(true);
-    await onSave({ area: location.label, lat: location.lat, lng: location.lng, services, blurb, notify_phone: notifyPhone || null });
+    await onSave({ area: location.label, lat: location.lat, lng: location.lng, services, blurb, notify_phone: notifyPhone || null, theme_color: themeColor });
     setSaving(false);
   };
 
@@ -1036,11 +1086,22 @@ function ProfileModal({ business, onClose, onSave }) {
           </Field>
           <Field label="Services offered"><div className="flex flex-wrap gap-1.5 mt-1">{SERVICES.map((s) => <ServiceChip key={s} label={s} active={services.includes(s)} onClick={() => toggleService(s)} />)}</div></Field>
           <Field label="Short description (optional)"><textarea value={blurb} onChange={(e) => setBlurb(e.target.value)} rows={2} className="tm-input" placeholder="Family-run plumbing business, 15 years serving Galway city & suburbs." /></Field>
+          <Field label="Your theme color">
+            <div className="flex flex-wrap gap-2 mt-1 items-center">
+              {swatches.map((c) => (
+                <button key={c} type="button" onClick={() => setThemeColor(c)}
+                  className="w-8 h-8 rounded-full"
+                  style={{ background: c, border: themeColor === c ? "3px solid #10233B" : "1px solid #e3dbc8" }} />
+              ))}
+              <input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="w-8 h-8 rounded-full cursor-pointer" style={{ border: "1px solid #e3dbc8" }} />
+            </div>
+            <p className="text-[11px] mt-1" style={{ color: "#8b8474" }}>Colors your dashboard and your card in the public directory.</p>
+          </Field>
           <Field label="Phone for SMS alerts (optional)">
             <input value={notifyPhone} onChange={(e) => setNotifyPhone(e.target.value)} className="tm-input" placeholder="087 123 4567" />
             <p className="text-[11px] mt-1" style={{ color: "#8b8474" }}>You'll always get email alerts at your login email. Add a phone here for SMS too.</p>
           </Field>
-          <button onClick={save} disabled={saving} style={{ background: "#FF6A13" }} className="w-full text-white font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2">
+          <button onClick={save} disabled={saving} style={{ background: themeColor }} className="w-full text-white font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2">
             {saving ? <Loader2 className="animate-spin" size={16} /> : null} Save profile
           </button>
         </div>

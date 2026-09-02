@@ -203,11 +203,29 @@ function downloadInvoicePdf(lead, businessName) {
   y += 2;
   doc.line(14, y, 196, y);
   y += 9;
+  if (lead.invoice?.vatRate != null) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...grey);
+    doc.text("Subtotal", 14, y);
+    doc.text(`€${lead.invoice.subtotal}`, 196, y, { align: "right" });
+    y += 7;
+    doc.text(`VAT @ ${lead.invoice.vatRate}%`, 14, y);
+    doc.text(`€${lead.invoice.vatAmount}`, 196, y, { align: "right" });
+    y += 9;
+  }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
   doc.setTextColor(...navy);
   doc.text("TOTAL", 14, y);
   doc.text(`€${total}`, 196, y, { align: "right" });
+  if (lead.invoice?.vatNumber) {
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...grey);
+    doc.text(`VAT number: ${lead.invoice.vatNumber}`, 14, y);
+  }
 
   y += 14;
   const paid = !!lead.invoice?.paid;
@@ -234,6 +252,13 @@ async function uploadPhotos(files) {
     urls.push(data.publicUrl);
   }
   return urls;
+}
+
+async function uploadVerificationDoc(businessId, file) {
+  const path = `${businessId}/${crypto.randomUUID()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "")}`;
+  const { error } = await supabase.storage.from("verification-docs").upload(path, file);
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+  return path; // private bucket — store the path, not a public URL
 }
 
 async function geocodeAddress(query) {
@@ -878,7 +903,7 @@ function BrowseTrades({ onBack, onViewStatus, onLegal }) {
           <div key={b.id} style={{ background: "white", border: "1px solid #e3dbc8", borderLeft: `4px solid ${b.theme_color || "#FF6A13"}` }} className="rounded-sm p-4 pt-5 relative">
             <PerforatedTop />
             <div className="flex items-start justify-between mb-1">
-              <div className="font-semibold text-sm" style={{ color: "#10233B" }}>{b.name}</div>
+              <div className="font-semibold text-sm flex items-center gap-1.5" style={{ color: "#10233B" }}>{b.name}{b.verification_status === "verified" && <VerifiedBadge />}</div>
               {b.distance != null && <div className="tm-mono text-xs shrink-0" style={{ color: "#5B6B7D" }}>{b.distance.toFixed(1)} km away</div>}
             </div>
             {ratings[b.id] && ratings[b.id].length > 0 && (
@@ -1159,6 +1184,12 @@ function CustomerView({ businessName, lead: initialLead, onBack }) {
         {lead.booking && <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3 mb-3 text-sm flex items-center gap-2"><Clock size={14} /> {lead.booking.date} · {lead.booking.time}</div>}
         {lead.invoice && (
           <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3 text-sm">
+            {lead.invoice.vatRate != null && (
+              <div className="text-xs mb-1" style={{ color: "#5B6B7D" }}>
+                <div className="flex justify-between"><span>Subtotal</span><span className="tm-mono">€{lead.invoice.subtotal}</span></div>
+                <div className="flex justify-between"><span>VAT @ {lead.invoice.vatRate}%</span><span className="tm-mono">€{lead.invoice.vatAmount}</span></div>
+              </div>
+            )}
             <div className="tm-mono text-lg flex items-center gap-1" style={{ color: "#10233B" }}><Euro size={16} />{lead.invoice.total}</div>
             <button onClick={() => downloadInvoicePdf(lead, businessName)} style={{ background: "white", border: "1.5px solid #10233B", color: "#10233B" }} className="mt-2 mb-2 text-xs font-semibold px-3 py-1.5 rounded-sm flex items-center gap-1">
               <Download size={13} /> Download PDF
@@ -1236,9 +1267,10 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
     await supabase.from("leads").update(patch).eq("id", id);
   };
 
-  const saveProfile = async (patch) => {
+  const saveProfile = async (patch, opts = {}) => {
     const { data, error } = await supabase.from("businesses").update(patch).eq("id", business.id).select().single();
-    if (!error) { onBusinessUpdate(data); setShowProfile(false); }
+    if (!error) { onBusinessUpdate(data); if (!opts.keepOpen) setShowProfile(false); }
+    return { data, error };
   };
 
   return (
@@ -1247,7 +1279,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
         <div className="flex items-center gap-2">
           <div style={{ background: theme }} className="w-8 h-8 rounded flex items-center justify-center rotate-[-3deg]"><Wrench size={18} color="#10233B" strokeWidth={2.5} /></div>
           <div>
-            <div className="tm-display text-sm tracking-tight leading-none">{business.name.toUpperCase()}</div>
+            <div className="tm-display text-sm tracking-tight leading-none flex items-center gap-1.5">{business.name.toUpperCase()}{business.verification_status === "verified" && <VerifiedBadge />}</div>
             <div className="text-[10px] tracking-[0.2em] text-white/60 leading-none mt-1">TRADEMATE WORKSPACE</div>
           </div>
         </div>
@@ -1279,7 +1311,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
         {!loaded && <div className="flex items-center justify-center py-16 text-sm" style={{ color: "#5B6B7D" }}><Loader2 className="animate-spin mr-2" size={16} /> Loading your jobs…</div>}
         {loaded && tab === "inbox" && !selected && <StatsBar leads={leads} theme={theme} />}
         {loaded && tab === "inbox" && !selected && <Inbox leads={leads} onSelect={setSelectedId} onNew={() => setShowNewLead(true)} />}
-        {loaded && tab === "inbox" && selected && <LeadDetail lead={selected} businessName={business.name} onBack={() => setSelectedId(null)} onPatch={(p) => patchLead(selected.id, p)} />}
+        {loaded && tab === "inbox" && selected && <LeadDetail lead={selected} business={business} onBack={() => setSelectedId(null)} onPatch={(p) => patchLead(selected.id, p)} />}
         {loaded && tab === "calendar" && <CalendarView leads={leads} />}
         {loaded && tab === "quotes" && <QuoteList leads={leads} onOpen={(id) => { setTab("inbox"); setSelectedId(id); }} />}
         {loaded && tab === "invoices" && <InvoiceList leads={leads} onOpen={(id) => { setTab("inbox"); setSelectedId(id); }} />}
@@ -1288,6 +1320,14 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
       {showNewLead && <NewLeadModal onClose={() => setShowNewLead(false)} onCreate={createLead} />}
       {showProfile && <ProfileModal business={business} onClose={() => setShowProfile(false)} onSave={saveProfile} />}
     </div>
+  );
+}
+
+function VerifiedBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-sm" style={{ background: "#E7F5EC", color: "#2F8F5B" }}>
+      <CheckCircle2 size={11} /> Verified
+    </span>
   );
 }
 
@@ -1301,13 +1341,46 @@ function ProfileModal({ business, onClose, onSave }) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [inviteMsg, setInviteMsg] = useState(null); // {ok, text}
+  const [licenseNumber, setLicenseNumber] = useState(business.license_number || "");
+  const [insuranceProvider, setInsuranceProvider] = useState(business.insurance_provider || "");
+  const [insuranceExpiry, setInsuranceExpiry] = useState(business.insurance_expiry || "");
+  const [verificationFile, setVerificationFile] = useState(null);
+  const [submittingVerification, setSubmittingVerification] = useState(false);
+  const [verificationMsg, setVerificationMsg] = useState(null);
+  const [vatRegistered, setVatRegistered] = useState(business.vat_registered || false);
+  const [vatNumber, setVatNumber] = useState(business.vat_number || "");
+  const [vatRate, setVatRate] = useState(business.vat_rate ?? 23);
   const toggleService = (s) => setServices((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
   const swatches = ["#FF6A13", "#2F8F5B", "#1D4ED8", "#C2410C", "#7C3AED", "#0F766E", "#DB2777"];
 
   const save = async () => {
     setSaving(true);
-    await onSave({ area: location.label, lat: location.lat, lng: location.lng, services, blurb, notify_phone: notifyPhone || null, theme_color: themeColor });
+    await onSave({
+      area: location.label, lat: location.lat, lng: location.lng, services, blurb,
+      notify_phone: notifyPhone || null, theme_color: themeColor,
+      vat_registered: vatRegistered, vat_number: vatRegistered ? (vatNumber || null) : null, vat_rate: vatRate,
+    });
     setSaving(false);
+  };
+
+  const submitVerification = async () => {
+    setSubmittingVerification(true); setVerificationMsg(null);
+    try {
+      let docUrl = business.verification_doc_url;
+      if (verificationFile) docUrl = await uploadVerificationDoc(business.id, verificationFile);
+      await onSave({
+        license_number: licenseNumber || null,
+        insurance_provider: insuranceProvider || null,
+        insurance_expiry: insuranceExpiry || null,
+        verification_doc_url: docUrl || null,
+        verification_status: "pending",
+        verification_submitted_at: new Date().toISOString(),
+      }, { keepOpen: true });
+      setVerificationMsg({ ok: true, text: "Submitted — we'll review this and update your status." });
+    } catch (e) {
+      setVerificationMsg({ ok: false, text: e.message || "Something went wrong." });
+    }
+    setSubmittingVerification(false);
   };
 
   const inviteTeammate = async () => {
@@ -1350,6 +1423,48 @@ function ProfileModal({ business, onClose, onSave }) {
             <input value={notifyPhone} onChange={(e) => setNotifyPhone(e.target.value)} className="tm-input" placeholder="087 123 4567" />
             <p className="text-[11px] mt-1" style={{ color: "#8b8474" }}>You'll always get email alerts at your login email. Add a phone here for SMS too.</p>
           </Field>
+
+          <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3">
+            <Field label="VAT">
+              <label className="flex items-center gap-2 text-sm mt-1">
+                <input type="checkbox" checked={vatRegistered} onChange={(e) => setVatRegistered(e.target.checked)} />
+                <span>I'm VAT registered</span>
+              </label>
+              {vatRegistered && (
+                <div className="mt-2 space-y-2">
+                  <input value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} className="tm-input !mt-0" placeholder="VAT number, e.g. IE1234567T" />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs" style={{ color: "#5B6B7D" }}>Rate:</span>
+                    <input type="number" value={vatRate} onChange={(e) => setVatRate(Number(e.target.value))} className="tm-input !mt-0 w-20" />
+                    <span className="text-xs" style={{ color: "#5B6B7D" }}>%</span>
+                  </div>
+                  <p className="text-[11px]" style={{ color: "#8b8474" }}>23% is the current Irish standard rate — adjust if a different rate applies to your trade.</p>
+                </div>
+              )}
+            </Field>
+          </div>
+
+          <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3">
+            <Field label="Verification (licensing & insurance)">
+              {business.verification_status === "verified" && <div className="mt-1 mb-2"><VerifiedBadge /></div>}
+              {business.verification_status === "pending" && <p className="text-xs mt-1 mb-2" style={{ color: "#5B6B7D" }}>Submitted — awaiting review.</p>}
+              {business.verification_status === "rejected" && (
+                <p className="text-xs mt-1 mb-2" style={{ color: "#C2410C" }}>Not approved{business.verification_notes ? `: ${business.verification_notes}` : "."} You can resubmit below.</p>
+              )}
+              <p className="text-[11px] mb-2" style={{ color: "#8b8474" }}>Verified businesses show a badge to customers. Submitting sends this for manual review.</p>
+              <input value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} className="tm-input" placeholder="Trade license / registration number" />
+              <input value={insuranceProvider} onChange={(e) => setInsuranceProvider(e.target.value)} className="tm-input" placeholder="Public liability insurance provider" />
+              <label className="text-[11px] mt-2 block" style={{ color: "#8b8474" }}>Insurance expiry date</label>
+              <input type="date" value={insuranceExpiry} onChange={(e) => setInsuranceExpiry(e.target.value)} className="tm-input" />
+              <label className="text-[11px] mt-2 block" style={{ color: "#8b8474" }}>Upload license or insurance certificate (photo or PDF)</label>
+              <input type="file" accept="image/*,application/pdf" onChange={(e) => setVerificationFile(e.target.files[0] || null)} className="text-xs mt-1" />
+              {verificationMsg && <p className="text-xs mt-1" style={{ color: verificationMsg.ok ? "#2F8F5B" : "#C2410C" }}>{verificationMsg.text}</p>}
+              <button onClick={submitVerification} disabled={submittingVerification} style={{ background: "#10233B" }} className="text-white text-xs font-semibold px-3 py-2 rounded-sm mt-2 flex items-center gap-2">
+                {submittingVerification ? <Loader2 className="animate-spin" size={14} /> : null} Submit for verification
+              </button>
+            </Field>
+          </div>
+
           <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3">
             <Field label="Add a team member">
               <p className="text-[11px] mt-1 mb-1" style={{ color: "#8b8474" }}>They need a TradeMate account already (any email that's signed up before) — this gives them full access to your jobs.</p>
@@ -1478,7 +1593,8 @@ function NewLeadModal({ onClose, onCreate }) {
 
 /* ---------------- Lead Detail ---------------- */
 
-function LeadDetail({ lead, businessName, onBack, onPatch }) {
+function LeadDetail({ lead, business, onBack, onPatch }) {
+  const businessName = business.name;
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState(null);
   const [answerDraft, setAnswerDraft] = useState("");
@@ -1519,9 +1635,18 @@ function LeadDetail({ lead, businessName, onBack, onPatch }) {
     notifyCustomer(lead.id, `Your appointment is confirmed for ${bookingDraft.date} at ${bookingDraft.time}.`);
   };
   const markComplete = () => {
-    const total = quoteDraft ? (quoteDraft.labour || 0) + (quoteDraft.callout || 0) + Math.round(((quoteDraft.partsMin || 0) + (quoteDraft.partsMax || 0)) / 2) : 0;
-    onPatch({ status: "invoiced", invoice: { total, issuedAt: new Date().toISOString(), paid: false } });
-    notifyCustomer(lead.id, `Job complete! Your invoice is ready: €${total}. Pay online from your job status page.`);
+    const subtotal = quoteDraft ? (quoteDraft.labour || 0) + (quoteDraft.callout || 0) + Math.round(((quoteDraft.partsMin || 0) + (quoteDraft.partsMax || 0)) / 2) : 0;
+    let invoice;
+    if (business.vat_registered) {
+      const rate = business.vat_rate ?? 23;
+      const vatAmount = Math.round(subtotal * (rate / 100) * 100) / 100;
+      const total = Math.round((subtotal + vatAmount) * 100) / 100;
+      invoice = { subtotal, vatRate: rate, vatAmount, vatNumber: business.vat_number || null, total, issuedAt: new Date().toISOString(), paid: false };
+    } else {
+      invoice = { subtotal, total: subtotal, issuedAt: new Date().toISOString(), paid: false };
+    }
+    onPatch({ status: "invoiced", invoice });
+    notifyCustomer(lead.id, `Job complete! Your invoice is ready: €${invoice.total}. Pay online from your job status page.`);
   };
   const markPaid = () => onPatch({ status: "paid", invoice: { ...lead.invoice, paid: true, paidAt: new Date().toISOString() } });
   const declineLead = () => {
@@ -1663,6 +1788,12 @@ function LeadDetail({ lead, businessName, onBack, onPatch }) {
         {(lead.status === "invoiced" || lead.status === "paid") && lead.invoice && (
           <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-4">
             <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5B6B7D" }}>Invoice</div>
+            {lead.invoice.vatRate != null ? (
+              <div className="text-sm mb-1" style={{ color: "#5B6B7D" }}>
+                <div className="flex justify-between"><span>Subtotal</span><span className="tm-mono">€{lead.invoice.subtotal}</span></div>
+                <div className="flex justify-between"><span>VAT @ {lead.invoice.vatRate}%</span><span className="tm-mono">€{lead.invoice.vatAmount}</span></div>
+              </div>
+            ) : null}
             <div className="tm-mono text-2xl flex items-center gap-1" style={{ color: "#10233B" }}><Euro size={20} />{lead.invoice.total}</div>
             <div className="text-xs mt-1" style={{ color: "#5B6B7D" }}>Issued {new Date(lead.invoice.issuedAt).toLocaleDateString("en-IE")}</div>
             <button onClick={() => downloadInvoicePdf(lead, businessName)} style={{ background: "white", border: "1.5px solid #10233B", color: "#10233B" }} className="mt-2 text-sm font-semibold px-4 py-2 rounded-sm flex items-center gap-1">

@@ -47,6 +47,7 @@ const SERVICES = [
   "General plumbing maintenance", "Gas fitting",
 ];
 
+const PLATFORM_FEE_START = new Date("2026-11-05T00:00:00Z"); // must match create-checkout-session Edge Function
 const STATUS_LABEL = { new: "NEW ENQUIRY", quoted: "QUOTED", booked: "BOOKED", invoiced: "INVOICED", paid: "PAID", declined: "DECLINED" };
 const STATUS_COLOR = { new: "#FF6A13", quoted: "#5B6B7D", booked: "#10233B", invoiced: "#C2410C", paid: "#2F8F5B", declined: "#8b8474" };
 
@@ -435,7 +436,7 @@ export default function App() {
       return;
     }
 
-    const oauthReturn = params.get("oauth_return");
+    const oauthReturn = params.get("oauth_return") || params.get("connect_return") || params.get("connect_refresh");
     if (oauthReturn) {
       window.history.replaceState({}, "", window.location.pathname); // clean the URL
       supabase.auth.getSession().then(({ data: { session } }) => {
@@ -1232,6 +1233,36 @@ function CustomerView({ businessName, lead: initialLead, onBack }) {
 
 /* ================= PRO DASHBOARD ================= */
 
+function PaymentsBanner({ business, connecting, onConnect }) {
+  const inTrial = new Date() < PLATFORM_FEE_START;
+  const trialEndLabel = PLATFORM_FEE_START.toLocaleDateString("en-IE", { day: "numeric", month: "long", year: "numeric" });
+  const connected = business.stripe_account_id && business.stripe_charges_enabled;
+  const pending = business.stripe_account_id && !business.stripe_charges_enabled;
+
+  if (connected) {
+    return (
+      <div style={{ background: "#E7F5EC", border: "1px solid #b7e0c6" }} className="rounded-sm px-3 py-2 mb-3 text-xs flex items-center justify-between gap-2">
+        <span style={{ color: "#2F8F5B" }} className="font-semibold flex items-center gap-1"><CheckCircle2 size={13} /> Stripe connected — payments go straight to your account</span>
+        <span style={{ color: "#2F8F5B" }}>{inTrial ? `Free until ${trialEndLabel}` : "5% platform fee applies"}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: "#FFF1E6", border: "1px solid #FFD9B8" }} className="rounded-sm px-3 py-2.5 mb-3 text-xs">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <span style={{ color: "#7a3410" }}>
+          {inTrial ? `Free for everyone until ${trialEndLabel} — a 5% fee applies after that.` : "A 5% platform fee now applies to paid jobs."}
+          {" "}{pending ? "Finish connecting Stripe to receive card payments directly." : "Connect Stripe to receive card payments directly to your own account."}
+        </span>
+        <button onClick={onConnect} disabled={connecting} style={{ background: "#10233B" }} className="text-white text-xs font-semibold px-3 py-1.5 rounded-sm shrink-0 flex items-center gap-1">
+          {connecting ? <Loader2 className="animate-spin" size={13} /> : null} {pending ? "Finish connecting Stripe" : "Connect Stripe"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ProDashboard({ business, onLogout, onBusinessUpdate }) {
   const [leads, setLeads] = useState([]);
   const [tab, setTab] = useState("inbox");
@@ -1239,6 +1270,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
   const [showNewLead, setShowNewLead] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const theme = business.theme_color || "#FF6A13";
 
   const fetchLeads = useCallback(async () => {
@@ -1248,6 +1280,35 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
   }, [business.id]);
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
+
+  useEffect(() => {
+    // Opportunistically re-check Stripe Connect status if they've started but not finished onboarding
+    if (business.stripe_account_id && !business.stripe_charges_enabled) {
+      (async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/connect-status`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+          body: JSON.stringify({ business_id: business.id }),
+        });
+        const result = await res.json();
+        if (result.chargesEnabled) onBusinessUpdate({ ...business, stripe_charges_enabled: true });
+      })();
+    }
+  }, [business.id, business.stripe_account_id, business.stripe_charges_enabled]);
+
+  const connectStripe = async () => {
+    setConnecting(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/connect-onboard`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+      body: JSON.stringify({ business_id: business.id, origin: window.location.origin }),
+    });
+    const result = await res.json();
+    setConnecting(false);
+    if (result.url) window.location.href = result.url;
+  };
 
   const selected = leads.find((l) => l.id === selectedId) || null;
 
@@ -1309,6 +1370,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
 
       <div className="p-3 max-w-5xl mx-auto">
         {!loaded && <div className="flex items-center justify-center py-16 text-sm" style={{ color: "#5B6B7D" }}><Loader2 className="animate-spin mr-2" size={16} /> Loading your jobs…</div>}
+        {loaded && tab === "inbox" && !selected && <PaymentsBanner business={business} connecting={connecting} onConnect={connectStripe} />}
         {loaded && tab === "inbox" && !selected && <StatsBar leads={leads} theme={theme} />}
         {loaded && tab === "inbox" && !selected && <Inbox leads={leads} onSelect={setSelectedId} onNew={() => setShowNewLead(true)} />}
         {loaded && tab === "inbox" && selected && <LeadDetail lead={selected} business={business} onBack={() => setSelectedId(null)} onPatch={(p) => patchLead(selected.id, p)} />}

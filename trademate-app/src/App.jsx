@@ -1740,7 +1740,6 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
     onPatch({ booking: bookingDraft, status: lead.status === "new" || lead.status === "quoted" ? "booked" : lead.status });
     setShowBookingForm(false);
     notifyCustomer(lead.id, `Your appointment is confirmed for ${bookingDraft.date} at ${bookingDraft.time}.`);
-    openContactLine();
   };
   const markComplete = () => {
     const subtotal = quoteDraft ? (quoteDraft.labour || 0) + (quoteDraft.callout || 0) + Math.round(((quoteDraft.partsMin || 0) + (quoteDraft.partsMax || 0)) / 2) : 0;
@@ -1758,7 +1757,6 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
   };
   const markPaid = () => {
     onPatch({ status: "paid", invoice: { ...lead.invoice, paid: true, paidAt: new Date().toISOString() } });
-    closeContactLine();
   };
   const declineLead = () => {
     if (!window.confirm("Decline this enquiry? The customer won't be notified automatically.")) return;
@@ -1769,7 +1767,6 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
     if (!window.confirm("Cancel this booking? The job will go back to unbooked.")) return;
     onPatch({ booking: null, status: lead.quote ? "quoted" : "new" });
     notifyCustomer(lead.id, `Your appointment for job ${lead.job_no} has been cancelled. We'll be in touch to rebook.`);
-    closeContactLine();
   };
   const saveReschedule = () => {
     if (!bookingDraft.date || !bookingDraft.time) return;
@@ -1792,17 +1789,7 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
       </div>
       <div className="p-4 space-y-4">
         <div>
-          <div className="font-semibold">{lead.name}</div>
-          {lead.proxy_active && lead.proxy_number ? (
-            <div className="text-sm mt-0.5 flex items-center gap-1" style={{ color: "#2F8F5B" }}><Phone size={12} /> Call/text {lead.proxy_number} to reach them — masked, active while this job is open</div>
-          ) : ["booked", "invoiced"].includes(lead.status) ? (
-            <button onClick={openContactLine} disabled={proxyLoading} className="text-xs font-semibold mt-1 px-2 py-1 rounded-sm flex items-center gap-1" style={{ background: "#10233B", color: "white" }}>
-              {proxyLoading ? <Loader2 className="animate-spin" size={12} /> : <Phone size={12} />} Open contact line
-            </button>
-          ) : (
-            <div className="text-xs mt-0.5" style={{ color: "#8b8474" }}>Phone hidden until booked — use messages below</div>
-          )}
-          {proxyError && <p className="text-xs mt-1" style={{ color: "#C2410C" }}>{proxyError}</p>}
+          <div className="font-semibold">{lead.name} · {lead.phone}</div>
           <div className="text-sm flex items-center gap-1 mt-1" style={{ color: "#5B6B7D" }}><MapPin size={12} /> {lead.address}</div>
           <div className="mt-1"><ChannelBadge channel={lead.channel} /></div>
           <p className="mt-2 text-sm">{lead.problem}</p>

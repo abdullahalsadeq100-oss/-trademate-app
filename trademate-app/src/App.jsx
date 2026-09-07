@@ -1182,7 +1182,14 @@ function CustomerView({ businessName, lead: initialLead, onBack }) {
             <div className="tm-mono text-lg flex items-center gap-1" style={{ color: "#10233B" }}><Euro size={16} />{total}</div>
           </div>
         )}
-        {lead.booking && <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3 mb-3 text-sm flex items-center gap-2"><Clock size={14} /> {lead.booking.date} · {lead.booking.time}</div>}
+        {lead.booking && (
+          <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3 mb-3 text-sm">
+            <div className="flex items-center gap-2"><Clock size={14} /> {lead.booking.date} · {lead.booking.time}</div>
+            {lead.proxy_active && lead.proxy_number && (
+              <div className="flex items-center gap-2 mt-1" style={{ color: "#2F8F5B" }}><Phone size={14} /> Call/text {lead.proxy_number} to reach {businessName}</div>
+            )}
+          </div>
+        )}
         {lead.invoice && (
           <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3 text-sm">
             {lead.invoice.vatRate != null && (
@@ -1233,7 +1240,7 @@ function CustomerView({ businessName, lead: initialLead, onBack }) {
 
 /* ================= PRO DASHBOARD ================= */
 
-function PaymentsBanner({ business, connecting, onConnect }) {
+function PaymentsBanner({ business, connecting, onConnect, connectError }) {
   const inTrial = new Date() < PLATFORM_FEE_START;
   const trialEndLabel = PLATFORM_FEE_START.toLocaleDateString("en-IE", { day: "numeric", month: "long", year: "numeric" });
   const connected = business.stripe_account_id && business.stripe_charges_enabled;
@@ -1259,6 +1266,11 @@ function PaymentsBanner({ business, connecting, onConnect }) {
           {connecting ? <Loader2 className="animate-spin" size={13} /> : null} {pending ? "Finish connecting Stripe" : "Connect Stripe"}
         </button>
       </div>
+      {connectError && (
+        <div style={{ background: "white", border: "1px solid #C2410C", color: "#C2410C" }} className="rounded-sm p-2 mt-2 text-[11px]">
+          <strong>Error:</strong> {connectError}
+        </div>
+      )}
     </div>
   );
 }
@@ -1297,17 +1309,25 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
     }
   }, [business.id, business.stripe_account_id, business.stripe_charges_enabled]);
 
+  const [connectError, setConnectError] = useState("");
   const connectStripe = async () => {
     setConnecting(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/connect-onboard`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
-      body: JSON.stringify({ business_id: business.id, origin: window.location.origin }),
-    });
-    const result = await res.json();
-    setConnecting(false);
-    if (result.url) window.location.href = result.url;
+    setConnectError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/connect-onboard`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ business_id: business.id, origin: window.location.origin }),
+      });
+      const result = await res.json();
+      setConnecting(false);
+      if (result.url) window.location.href = result.url;
+      else setConnectError(result.error || `Unexpected response (status ${res.status})`);
+    } catch (e) {
+      setConnecting(false);
+      setConnectError(e.message || "Network error — couldn't reach the server.");
+    }
   };
 
   const selected = leads.find((l) => l.id === selectedId) || null;
@@ -1370,7 +1390,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
 
       <div className="p-3 max-w-5xl mx-auto">
         {!loaded && <div className="flex items-center justify-center py-16 text-sm" style={{ color: "#5B6B7D" }}><Loader2 className="animate-spin mr-2" size={16} /> Loading your jobs…</div>}
-        {loaded && tab === "inbox" && !selected && <PaymentsBanner business={business} connecting={connecting} onConnect={connectStripe} />}
+        {loaded && tab === "inbox" && !selected && <PaymentsBanner business={business} connecting={connecting} onConnect={connectStripe} connectError={connectError} />}
         {loaded && tab === "inbox" && !selected && <StatsBar leads={leads} theme={theme} />}
         {loaded && tab === "inbox" && !selected && <Inbox leads={leads} onSelect={setSelectedId} onNew={() => setShowNewLead(true)} />}
         {loaded && tab === "inbox" && selected && <LeadDetail lead={selected} business={business} onBack={() => setSelectedId(null)} onPatch={(p) => patchLead(selected.id, p)} />}
@@ -1690,11 +1710,37 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
     notifyCustomer(lead.id, `Your quote is ready: approx €${total}. Check your job status page for details and to book a time.`);
   };
   const [showBookingForm, setShowBookingForm] = useState(false);
+  const [proxyLoading, setProxyLoading] = useState(false);
+  const [proxyError, setProxyError] = useState("");
+
+  const callEdgeFn = async (name, body) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${name}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+      body: JSON.stringify(body),
+    });
+    return res.json();
+  };
+
+  const openContactLine = async () => {
+    setProxyLoading(true); setProxyError("");
+    const result = await callEdgeFn("proxy-open-session", { lead_id: lead.id });
+    setProxyLoading(false);
+    if (result.error) { setProxyError(result.error); return; }
+    onPatch({ proxy_active: true, proxy_number: result.proxy_number });
+  };
+  const closeContactLine = async () => {
+    await callEdgeFn("proxy-close-session", { lead_id: lead.id });
+    onPatch({ proxy_active: false });
+  };
+
   const confirmBooking = () => {
     if (!bookingDraft.date || !bookingDraft.time) return;
     onPatch({ booking: bookingDraft, status: lead.status === "new" || lead.status === "quoted" ? "booked" : lead.status });
     setShowBookingForm(false);
     notifyCustomer(lead.id, `Your appointment is confirmed for ${bookingDraft.date} at ${bookingDraft.time}.`);
+    openContactLine();
   };
   const markComplete = () => {
     const subtotal = quoteDraft ? (quoteDraft.labour || 0) + (quoteDraft.callout || 0) + Math.round(((quoteDraft.partsMin || 0) + (quoteDraft.partsMax || 0)) / 2) : 0;
@@ -1710,7 +1756,10 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
     onPatch({ status: "invoiced", invoice });
     notifyCustomer(lead.id, `Job complete! Your invoice is ready: €${invoice.total}. Pay online from your job status page.`);
   };
-  const markPaid = () => onPatch({ status: "paid", invoice: { ...lead.invoice, paid: true, paidAt: new Date().toISOString() } });
+  const markPaid = () => {
+    onPatch({ status: "paid", invoice: { ...lead.invoice, paid: true, paidAt: new Date().toISOString() } });
+    closeContactLine();
+  };
   const declineLead = () => {
     if (!window.confirm("Decline this enquiry? The customer won't be notified automatically.")) return;
     onPatch({ status: "declined" });
@@ -1720,6 +1769,7 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
     if (!window.confirm("Cancel this booking? The job will go back to unbooked.")) return;
     onPatch({ booking: null, status: lead.quote ? "quoted" : "new" });
     notifyCustomer(lead.id, `Your appointment for job ${lead.job_no} has been cancelled. We'll be in touch to rebook.`);
+    closeContactLine();
   };
   const saveReschedule = () => {
     if (!bookingDraft.date || !bookingDraft.time) return;
@@ -1742,8 +1792,18 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
       </div>
       <div className="p-4 space-y-4">
         <div>
-          <div className="font-semibold">{lead.name} · {lead.phone}</div>
-          <div className="text-sm flex items-center gap-1" style={{ color: "#5B6B7D" }}><MapPin size={12} /> {lead.address}</div>
+          <div className="font-semibold">{lead.name}</div>
+          {lead.proxy_active && lead.proxy_number ? (
+            <div className="text-sm mt-0.5 flex items-center gap-1" style={{ color: "#2F8F5B" }}><Phone size={12} /> Call/text {lead.proxy_number} to reach them — masked, active while this job is open</div>
+          ) : ["booked", "invoiced"].includes(lead.status) ? (
+            <button onClick={openContactLine} disabled={proxyLoading} className="text-xs font-semibold mt-1 px-2 py-1 rounded-sm flex items-center gap-1" style={{ background: "#10233B", color: "white" }}>
+              {proxyLoading ? <Loader2 className="animate-spin" size={12} /> : <Phone size={12} />} Open contact line
+            </button>
+          ) : (
+            <div className="text-xs mt-0.5" style={{ color: "#8b8474" }}>Phone hidden until booked — use messages below</div>
+          )}
+          {proxyError && <p className="text-xs mt-1" style={{ color: "#C2410C" }}>{proxyError}</p>}
+          <div className="text-sm flex items-center gap-1 mt-1" style={{ color: "#5B6B7D" }}><MapPin size={12} /> {lead.address}</div>
           <div className="mt-1"><ChannelBadge channel={lead.channel} /></div>
           <p className="mt-2 text-sm">{lead.problem}</p>
           <PhotoThumbnails photos={lead.photos} />

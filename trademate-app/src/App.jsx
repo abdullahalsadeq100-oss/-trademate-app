@@ -41,11 +41,18 @@ const AREAS = [
 ];
 
 const SERVICES = [
-  "Boiler repair & servicing", "Leak & pipe repair", "Bathroom fitting",
-  "Heating installation", "Emergency call-out", "Drain unblocking",
-  "Water heater / immersion", "Radiator installation",
-  "General plumbing maintenance", "Gas fitting",
+  "Plumbing", "Electrical", "Painting & decorating", "Carpentry & joinery",
+  "Gardening & landscaping", "Home cleaning", "Roofing", "Tiling", "Plastering",
+  "Heating & HVAC", "Locksmith", "Appliance repair", "Pest control",
+  "Removals & man with a van", "Handyman / general repairs", "Window & door fitting",
+  "Flooring installation", "Kitchen fitting", "Bathroom fitting", "Driveways & paving",
+  "Fencing & gates", "Chimney sweeping", "Car mechanic", "Massage therapy",
+  "Personal training", "Hairdressing & barbering", "Beauty & nail services",
+  "Catering & private chef", "Photography", "Tutoring", "Dog grooming & walking",
+  "Event planning", "IT & computer repair", "Interior design",
+  "Other",
 ];
+const SERVICES_FILTER = SERVICES.filter((s) => s !== "Other"); // "Other" isn't useful as a customer filter chip
 
 const PLATFORM_FEE_START = new Date("2026-11-10T00:00:00Z"); // must match create-checkout-session Edge Function
 const STRIPE_MANDATORY_DATE = new Date("2026-10-20T00:00:00Z");
@@ -366,13 +373,20 @@ async function callAiAssess({ problem, hasPhotos, conversation }) {
 /* ---------------- Small UI atoms ---------------- */
 
 function Logo({ size = 32, badgeSize = 32, rotate = true }) {
-  const angles = [0, 60, 120, 180, 240, 300];
+  // A single vine curls up from the bottom, wraps around the right side and
+  // over the top of the badge, and blooms into a small lotus at the end —
+  // like it's cuddling the wrench. Colors are fixed brand colors, never
+  // affected by a business's chosen theme color.
+  const petalAngles = [-155, -120, -85, -50, -15];
   return (
     <div style={{ width: size, height: size, position: "relative" }} className="flex items-center justify-center shrink-0">
       <svg viewBox="0 0 100 100" width={size} height={size} style={{ position: "absolute", inset: 0 }}>
-        {angles.map((a) => (
-          <path key={a} d="M50,53 C37,38 37,12 50,1 C63,12 63,38 50,53 Z" fill="#F2A5B0" stroke="#D9768A" strokeWidth="1.2" opacity="0.95" transform={`rotate(${a} 50 50)`} />
-        ))}
+        <path d="M52,92 C84,90 97,62 90,38 C84,16 62,4 34,9" fill="none" stroke="#8BAA6B" strokeWidth="4" strokeLinecap="round" />
+        <g transform="translate(30,9)">
+          {petalAngles.map((a) => (
+            <path key={a} d="M0,0 C-5,-8 -5,-19 0,-26 C5,-19 5,-8 0,0 Z" fill="#F2A5B0" stroke="#D9768A" strokeWidth="1" transform={`rotate(${a})`} />
+          ))}
+        </g>
       </svg>
       <div style={{ background: "#FF6A13", width: badgeSize, height: badgeSize, position: "relative", zIndex: 1 }}
         className={`rounded flex items-center justify-center ${rotate ? "rotate-[-3deg]" : ""}`}>
@@ -663,12 +677,17 @@ function ProAuth({ session, onDone, onBack, onLegal }) {
   const [bizName, setBizName] = useState("");
   const [location, setLocation] = useState(null); // {label, lat, lng}
   const [services, setServices] = useState([]);
+  const [otherText, setOtherText] = useState("");
+  const [showOtherInput, setShowOtherInput] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
-  const toggleService = (s) => setServices((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+  const toggleService = (s) => {
+    if (s === "Other") { setShowOtherInput((v) => !v); return; }
+    setServices((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+  };
 
   const sendResetEmail = async () => {
     setError("");
@@ -720,8 +739,9 @@ function ProAuth({ session, onDone, onBack, onLegal }) {
     // ensure uniqueness by checking existing slugs
     const { data: clashes } = await supabase.from("businesses").select("slug").ilike("slug", `${slug}%`);
     if (clashes && clashes.some((c) => c.slug === slug)) slug += Math.floor(Math.random() * 9);
+    const finalServices = otherText.trim() ? [...services, otherText.trim()] : services;
     const { data, error } = await supabase.from("businesses").insert({
-      owner_id: user.id, name: bizName.trim(), slug, area: location.label, lat: location.lat, lng: location.lng, services,
+      owner_id: user.id, name: bizName.trim(), slug, area: location.label, lat: location.lat, lng: location.lng, services: finalServices,
     }).select().single();
     setBusy(false);
     if (error) { setError(error.message); return; }
@@ -807,7 +827,10 @@ function ProAuth({ session, onDone, onBack, onLegal }) {
             <AddressLookup onResolved={setLocation} />
           </Field>
           <Field label="What do you offer?">
-            <div className="flex flex-wrap gap-1.5 mt-1">{SERVICES.map((s) => <ServiceChip key={s} label={s} active={services.includes(s)} onClick={() => toggleService(s)} />)}</div>
+            <div className="flex flex-wrap gap-1.5 mt-1">{SERVICES.map((s) => <ServiceChip key={s} label={s} active={s === "Other" ? showOtherInput : services.includes(s)} onClick={() => toggleService(s)} />)}</div>
+            {showOtherInput && (
+              <input value={otherText} onChange={(e) => setOtherText(e.target.value)} className="tm-input mt-2" placeholder="What do you do?" />
+            )}
           </Field>
           {error && <p className="text-xs mt-2" style={{ color: "#C2410C" }}>{error}</p>}
           <button onClick={submitSetup} disabled={busy} style={{ background: "#FF6A13" }} className="w-full text-white font-semibold py-2.5 rounded-sm mt-4 flex items-center justify-center gap-2">
@@ -906,7 +929,7 @@ function BrowseTrades({ onBack, onViewStatus, onLegal }) {
       )}
 
       <div className="flex flex-wrap gap-1.5 mb-4">
-        {SERVICES.map((s) => <ServiceChip key={s} label={s} active={serviceFilter.includes(s)} onClick={() => toggleService(s)} />)}
+        {SERVICES_FILTER.map((s) => <ServiceChip key={s} label={s} active={serviceFilter.includes(s)} onClick={() => toggleService(s)} />)}
       </div>
 
       {!loaded && <div className="text-sm py-8 text-center" style={{ color: "#5B6B7D" }}>Loading…</div>}
@@ -1466,7 +1489,9 @@ function VerifiedBadge() {
 
 function ProfileModal({ business, onClose, onSave }) {
   const [location, setLocation] = useState({ label: business.area, lat: business.lat, lng: business.lng });
-  const [services, setServices] = useState(business.services || []);
+  const [services, setServices] = useState((business.services || []).filter((s) => SERVICES.includes(s)));
+  const [otherText, setOtherText] = useState((business.services || []).filter((s) => !SERVICES.includes(s)).join(", "));
+  const [showOtherInput, setShowOtherInput] = useState(!!(business.services || []).some((s) => !SERVICES.includes(s)));
   const [blurb, setBlurb] = useState(business.blurb || "");
   const [notifyPhone, setNotifyPhone] = useState(business.notify_phone || "");
   const [themeColor, setThemeColor] = useState(business.theme_color || "#FF6A13");
@@ -1483,13 +1508,17 @@ function ProfileModal({ business, onClose, onSave }) {
   const [vatRegistered, setVatRegistered] = useState(business.vat_registered || false);
   const [vatNumber, setVatNumber] = useState(business.vat_number || "");
   const [vatRate, setVatRate] = useState(business.vat_rate ?? 23);
-  const toggleService = (s) => setServices((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+  const toggleService = (s) => {
+    if (s === "Other") { setShowOtherInput((v) => !v); return; }
+    setServices((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+  };
   const swatches = ["#FF6A13", "#2F8F5B", "#1D4ED8", "#C2410C", "#7C3AED", "#0F766E", "#DB2777"];
 
   const save = async () => {
     setSaving(true);
+    const finalServices = otherText.trim() ? [...services, otherText.trim()] : services;
     await onSave({
-      area: location.label, lat: location.lat, lng: location.lng, services, blurb,
+      area: location.label, lat: location.lat, lng: location.lng, services: finalServices, blurb,
       notify_phone: notifyPhone || null, theme_color: themeColor,
       vat_registered: vatRegistered, vat_number: vatRegistered ? (vatNumber || null) : null, vat_rate: vatRate,
     });
@@ -1539,7 +1568,12 @@ function ProfileModal({ business, onClose, onSave }) {
             <p className="text-xs mt-1 mb-1" style={{ color: "#5B6B7D" }}>Currently: {business.area || "not set"}</p>
             <AddressLookup initialLabel={business.area} onResolved={setLocation} />
           </Field>
-          <Field label="Services offered"><div className="flex flex-wrap gap-1.5 mt-1">{SERVICES.map((s) => <ServiceChip key={s} label={s} active={services.includes(s)} onClick={() => toggleService(s)} />)}</div></Field>
+          <Field label="Services offered">
+            <div className="flex flex-wrap gap-1.5 mt-1">{SERVICES.map((s) => <ServiceChip key={s} label={s} active={s === "Other" ? showOtherInput : services.includes(s)} onClick={() => toggleService(s)} />)}</div>
+            {showOtherInput && (
+              <input value={otherText} onChange={(e) => setOtherText(e.target.value)} className="tm-input mt-2" placeholder="What do you do?" />
+            )}
+          </Field>
           <Field label="Short description (optional)"><textarea value={blurb} onChange={(e) => setBlurb(e.target.value)} rows={2} className="tm-input" placeholder="Family-run plumbing business, 15 years serving Galway city & suburbs." /></Field>
           <Field label="Your theme color">
             <div className="flex flex-wrap gap-2 mt-1 items-center">

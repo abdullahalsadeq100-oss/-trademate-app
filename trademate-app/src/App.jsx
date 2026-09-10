@@ -78,9 +78,7 @@ CHANGES
 These terms may be updated from time to time. Continued use of the platform after a change constitutes acceptance of the updated terms.
 
 CONTACT
-Questions about these terms can be directed to the business operating this platform.
-
-This is a general template and has not been reviewed by a lawyer. Before relying on it for a live commercial service, have it reviewed by a qualified solicitor familiar with Irish and EU consumer law.`;
+Questions about these terms can be directed to the business operating this platform.`;
 
 const PRIVACY_TEXT = `Last updated: ${new Date().getFullYear()}
 
@@ -110,9 +108,7 @@ COOKIES / LOCAL STORAGE
 This site uses your browser's local session storage to keep you logged in. No third-party advertising trackers are used.
 
 CONTACT
-Questions about this policy or your data can be directed to the business operating this platform.
-
-This is a general template and has not been reviewed by a lawyer. Before relying on it for a live commercial service handling real customer data, have it reviewed by a qualified solicitor familiar with GDPR and Irish data protection law.`;
+Questions about this policy or your data can be directed to the business operating this platform.`;
 
 function slugify(name) {
   const letters = name.toUpperCase().replace(/[^A-Z ]/g, "").split(" ").filter(Boolean);
@@ -369,6 +365,23 @@ async function callAiAssess({ problem, hasPhotos, conversation }) {
 
 /* ---------------- Small UI atoms ---------------- */
 
+function Logo({ size = 32, badgeSize = 32, rotate = true }) {
+  const angles = [0, 60, 120, 180, 240, 300];
+  return (
+    <div style={{ width: size, height: size, position: "relative" }} className="flex items-center justify-center shrink-0">
+      <svg viewBox="0 0 100 100" width={size} height={size} style={{ position: "absolute", inset: 0 }}>
+        {angles.map((a) => (
+          <path key={a} d="M50,53 C37,38 37,12 50,1 C63,12 63,38 50,53 Z" fill="#F2A5B0" stroke="#D9768A" strokeWidth="1.2" opacity="0.95" transform={`rotate(${a} 50 50)`} />
+        ))}
+      </svg>
+      <div style={{ background: "#FF6A13", width: badgeSize, height: badgeSize, position: "relative", zIndex: 1 }}
+        className={`rounded flex items-center justify-center ${rotate ? "rotate-[-3deg]" : ""}`}>
+        <Wrench size={Math.round(badgeSize * 0.56)} color="#10233B" strokeWidth={2.5} />
+      </div>
+    </div>
+  );
+}
+
 function Stamp({ status }) {
   return (
     <div style={{ border: `2px solid ${STATUS_COLOR[status]}`, color: STATUS_COLOR[status], transform: "rotate(-4deg)" }}
@@ -613,10 +626,8 @@ function RoleSelect({ onPro, onCustomer, onBrowse, onLegal }) {
   return (
     <div className="max-w-md mx-auto px-4 py-10">
       <div className="text-center mb-8">
-        <div style={{ background: "#FF6A13" }} className="w-12 h-12 rounded flex items-center justify-center rotate-[-3deg] mx-auto mb-3">
-          <Wrench size={24} color="#10233B" strokeWidth={2.5} />
-        </div>
-        <div className="tm-display text-xl" style={{ color: "#10233B" }}>TRADEMATE</div>
+        <div className="mx-auto" style={{ width: "fit-content" }}><Logo size={64} badgeSize={48} /></div>
+        <div className="tm-display text-xl mt-2" style={{ color: "#10233B" }}>TRADEMATE</div>
         <div className="text-xs tracking-[0.2em] mt-1" style={{ color: "#8b8474" }}>IRELAND</div>
       </div>
 
@@ -1115,7 +1126,10 @@ function CustomerView({ businessName, businessPhone, lead: initialLead, onBack }
     setReviewSaving(true);
     const { error } = await supabase.rpc("submit_review", { p_lead_id: lead.id, p_phone: lead.phone, p_rating: reviewRating, p_comment: reviewComment || null });
     setReviewSaving(false);
-    if (!error) setReviewSubmitted(true);
+    if (!error) {
+      setReviewSubmitted(true);
+      edgeFunctionCall("notify-new-enquiry", { lead_id: lead.id, message: `New ${reviewRating}-star review on job ${lead.job_no}${reviewComment ? `: "${reviewComment}"` : ""}` });
+    }
   };
 
   const payNow = async () => {
@@ -1352,7 +1366,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
     <div>
       <div style={{ background: "#10233B" }} className="text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div style={{ background: theme }} className="w-8 h-8 rounded flex items-center justify-center rotate-[-3deg]"><Wrench size={18} color="#10233B" strokeWidth={2.5} /></div>
+          <Logo size={44} badgeSize={32} />
           <div>
             <div className="tm-display text-sm tracking-tight leading-none flex items-center gap-1.5">{business.name.toUpperCase()}{business.verification_status === "verified" && <VerifiedBadge />}</div>
             <div className="text-[10px] tracking-[0.2em] text-white/60 leading-none mt-1">TRADEMATE WORKSPACE</div>
@@ -1753,8 +1767,9 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
     onPatch({ status: "paid", invoice: { ...lead.invoice, paid: true, paidAt: new Date().toISOString() } });
   };
   const declineLead = () => {
-    if (!window.confirm("Decline this enquiry? The customer won't be notified automatically.")) return;
+    if (!window.confirm("Decline this enquiry? The customer will be notified.")) return;
     onPatch({ status: "declined" });
+    notifyCustomer(lead.id, `Unfortunately we're not able to take on job ${lead.job_no} at this time. Sorry for the inconvenience.`);
   };
   const [rescheduling, setRescheduling] = useState(false);
   const cancelBooking = () => {
@@ -2038,9 +2053,9 @@ function MonthGrid({ anchorDate, byDate, selectedDate, onSelect }) {
                 background: isToday ? "#FF6A13" : "transparent",
                 width: 18, height: 18, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
               }}>{day.getDate()}</div>
-              <div className="flex gap-0.5 mt-1">
+              <div className="flex gap-1 mt-1.5">
                 {jobs.slice(0, 3).map((_, idx) => (
-                  <div key={idx} style={{ width: 4, height: 4, borderRadius: "50%", background: dots[idx % dots.length] }} />
+                  <div key={idx} style={{ width: 8, height: 8, borderRadius: "50%", background: dots[idx % dots.length] }} />
                 ))}
               </div>
             </button>

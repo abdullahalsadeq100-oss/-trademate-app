@@ -47,7 +47,8 @@ const SERVICES = [
   "General plumbing maintenance", "Gas fitting",
 ];
 
-const PLATFORM_FEE_START = new Date("2026-11-05T00:00:00Z"); // must match create-checkout-session Edge Function
+const PLATFORM_FEE_START = new Date("2026-11-10T00:00:00Z"); // must match create-checkout-session Edge Function
+const STRIPE_MANDATORY_DATE = new Date("2026-10-20T00:00:00Z");
 const STATUS_LABEL = { new: "NEW ENQUIRY", quoted: "QUOTED", booked: "BOOKED", invoiced: "INVOICED", paid: "PAID", declined: "DECLINED" };
 const STATUS_COLOR = { new: "#FF6A13", quoted: "#5B6B7D", booked: "#10233B", invoiced: "#C2410C", paid: "#2F8F5B", declined: "#8b8474" };
 
@@ -476,7 +477,8 @@ export default function App() {
     setBusiness(null);
     setPhase("role");
   };
-  const goToStatus = (bizName, lead) => { setCustomerBusinessName(bizName); setCustomerLead(lead); setPhase("cust-view"); };
+  const [customerBusinessPhone, setCustomerBusinessPhone] = useState(null);
+  const goToStatus = (bizName, lead, bizPhone) => { setCustomerBusinessName(bizName); setCustomerBusinessPhone(bizPhone || null); setCustomerLead(lead); setPhase("cust-view"); };
   const openLegal = (page, fromPhase) => { setReturnPhase(fromPhase); setPhase(page); };
 
   return (
@@ -487,7 +489,7 @@ export default function App() {
       {phase === "pro-auth" && <ProAuth session={session} onDone={(biz) => { setBusiness(biz); setPhase("pro-app"); }} onBack={() => setPhase("role")} onLegal={(p) => openLegal(p, "pro-auth")} />}
       {phase === "pro-app" && business && <ProDashboard business={business} onLogout={logout} onBusinessUpdate={setBusiness} />}
       {phase === "cust-lookup" && <CustomerLookup onBack={() => setPhase("role")} onFound={goToStatus} />}
-      {phase === "cust-view" && customerLead && <CustomerView businessName={customerBusinessName} lead={customerLead} onBack={() => setPhase("cust-lookup")} />}
+      {phase === "cust-view" && customerLead && <CustomerView businessName={customerBusinessName} businessPhone={customerBusinessPhone} lead={customerLead} onBack={() => setPhase("cust-lookup")} />}
       {phase === "browse" && <BrowseTrades onBack={() => setPhase("role")} onViewStatus={goToStatus} onLegal={(p) => openLegal(p, "browse")} />}
       {phase === "payment-result" && paymentReturn && <PaymentResult jobNo={paymentReturn.jobNo} outcome={paymentReturn.outcome} onDone={() => setPhase("role")} />}
       {phase === "reset-password" && <ResetPassword onDone={() => setPhase("role")} />}
@@ -861,7 +863,7 @@ function BrowseTrades({ onBack, onViewStatus, onLegal }) {
         </div>
         <p className="text-xs mb-4" style={{ color: "#8b8474" }}>Save this and your phone number — you'll need both to check status later.</p>
         <div className="flex flex-col gap-2">
-          <button onClick={() => onViewStatus(confirmation.business.name, confirmation.lead)} style={{ background: "#FF6A13" }} className="text-white text-sm font-semibold py-2.5 rounded-sm">Check status now</button>
+          <button onClick={() => onViewStatus(confirmation.business.name, confirmation.lead, confirmation.business.notify_phone)} style={{ background: "#FF6A13" }} className="text-white text-sm font-semibold py-2.5 rounded-sm">Check status now</button>
           <button onClick={() => setConfirmation(null)} className="text-sm py-2" style={{ color: "#5B6B7D" }}>Back to browsing</button>
         </div>
       </div>
@@ -1080,8 +1082,8 @@ function CustomerLookup({ onBack, onFound }) {
       {results && results.length > 0 && (
         <div className="mt-6 space-y-2">
           <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "#5B6B7D" }}>{results.length} job{results.length > 1 ? "s" : ""} found</div>
-          {results.map(({ lead, business_name }) => (
-            <button key={lead.id} onClick={() => onFound(business_name, lead)} className="w-full text-left">
+          {results.map(({ lead, business_name, business_phone }) => (
+            <button key={lead.id} onClick={() => onFound(business_name, lead, business_phone)} className="w-full text-left">
               <div style={{ background: "white", border: "1px solid #e3dbc8" }} className="rounded-sm px-4 py-3 flex items-center justify-between">
                 <div>
                   <div className="tm-mono text-xs" style={{ color: "#5B6B7D" }}>{lead.job_no} · {business_name}</div>
@@ -1097,7 +1099,7 @@ function CustomerLookup({ onBack, onFound }) {
   );
 }
 
-function CustomerView({ businessName, lead: initialLead, onBack }) {
+function CustomerView({ businessName, businessPhone, lead: initialLead, onBack }) {
   const [lead, setLead] = useState(initialLead);
   const [answerDraft, setAnswerDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -1150,7 +1152,11 @@ function CustomerView({ businessName, lead: initialLead, onBack }) {
       <div style={{ background: "white", border: "1px solid #e3dbc8" }} className="rounded-sm p-4 pt-5 relative">
         <PerforatedTop />
         <div className="flex items-start justify-between mb-2">
-          <div><div className="tm-mono text-xs" style={{ color: "#5B6B7D" }}>{lead.job_no}</div><div className="text-sm font-semibold" style={{ color: "#10233B" }}>{businessName}</div></div>
+          <div>
+            <div className="tm-mono text-xs" style={{ color: "#5B6B7D" }}>{lead.job_no}</div>
+            <div className="text-sm font-semibold" style={{ color: "#10233B" }}>{businessName}</div>
+            {businessPhone && <div className="text-xs flex items-center gap-1 mt-0.5" style={{ color: "#5B6B7D" }}><Phone size={11} /> {businessPhone}</div>}
+          </div>
           <Stamp status={lead.status} />
         </div>
         <p className="text-sm mb-3">{lead.problem}</p>
@@ -1185,9 +1191,6 @@ function CustomerView({ businessName, lead: initialLead, onBack }) {
         {lead.booking && (
           <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3 mb-3 text-sm">
             <div className="flex items-center gap-2"><Clock size={14} /> {lead.booking.date} · {lead.booking.time}</div>
-            {lead.proxy_active && lead.proxy_number && (
-              <div className="flex items-center gap-2 mt-1" style={{ color: "#2F8F5B" }}><Phone size={14} /> Call/text {lead.proxy_number} to reach {businessName}</div>
-            )}
           </div>
         )}
         {lead.invoice && (
@@ -1255,22 +1258,13 @@ function PaymentsBanner({ business, connecting, onConnect, connectError }) {
     );
   }
 
+  const mandatoryLabel = STRIPE_MANDATORY_DATE.toLocaleDateString("en-IE", { day: "numeric", month: "long" });
+
   return (
     <div style={{ background: "#FFF1E6", border: "1px solid #FFD9B8" }} className="rounded-sm px-3 py-2.5 mb-3 text-xs">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <span style={{ color: "#7a3410" }}>
-          {inTrial ? `Free for everyone until ${trialEndLabel} — a 5% fee applies after that.` : "A 5% platform fee now applies to paid jobs."}
-          {" "}{pending ? "Finish connecting Stripe to receive card payments directly." : "Connect Stripe to receive card payments directly to your own account."}
-        </span>
-        <button onClick={onConnect} disabled={connecting} style={{ background: "#10233B" }} className="text-white text-xs font-semibold px-3 py-1.5 rounded-sm shrink-0 flex items-center gap-1">
-          {connecting ? <Loader2 className="animate-spin" size={13} /> : null} {pending ? "Finish connecting Stripe" : "Connect Stripe"}
-        </button>
-      </div>
-      {connectError && (
-        <div style={{ background: "white", border: "1px solid #C2410C", color: "#C2410C" }} className="rounded-sm p-2 mt-2 text-[11px]">
-          <strong>Error:</strong> {connectError}
-        </div>
-      )}
+      <span style={{ color: "#7a3410" }}>
+        Free for everyone until {trialEndLabel}. From {mandatoryLabel}, connecting Stripe will be mandatory to keep using TradeMate — we'll let you know here as soon as that's ready to set up.
+      </span>
     </div>
   );
 }

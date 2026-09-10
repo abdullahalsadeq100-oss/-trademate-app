@@ -1121,6 +1121,33 @@ function CustomerView({ businessName, businessPhone, lead: initialLead, onBack }
   const [reviewSaving, setReviewSaving] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
+  const [quoteResponding, setQuoteResponding] = useState(false);
+  const [quoteResponded, setQuoteResponded] = useState(false);
+  const [preferredTime, setPreferredTime] = useState("");
+  const respondToQuote = async (accepted) => {
+    setQuoteResponding(true);
+    if (accepted) {
+      const msgText = `I'd like to go ahead with this quote.${preferredTime.trim() ? ` Preferred time: ${preferredTime.trim()}.` : ""}`;
+      const { error } = await supabase.rpc("add_customer_reply", { p_lead_id: lead.id, p_phone: lead.phone, p_message: msgText });
+      if (!error) {
+        setLead((l) => ({ ...l, messages: [...(l.messages || []), { role: "customer", text: msgText, time: new Date().toISOString() }] }));
+        edgeFunctionCall("notify-new-enquiry", {
+          lead_id: lead.id,
+          message: `${lead.name} accepted the quote for job ${lead.job_no}${preferredTime.trim() ? ` — preferred time: ${preferredTime.trim()}` : ""}. Go ahead and book a time.`,
+        });
+        setQuoteResponded(true);
+      }
+    } else {
+      const { error } = await supabase.rpc("customer_decline_quote", { p_lead_id: lead.id, p_phone: lead.phone });
+      if (!error) {
+        setLead((l) => ({ ...l, status: "declined" }));
+        edgeFunctionCall("notify-new-enquiry", { lead_id: lead.id, message: `${lead.name} declined the quote for job ${lead.job_no}.` });
+        setQuoteResponded(true);
+      }
+    }
+    setQuoteResponding(false);
+  };
+
   const submitReview = async () => {
     if (reviewRating < 1) return;
     setReviewSaving(true);
@@ -1176,30 +1203,46 @@ function CustomerView({ businessName, businessPhone, lead: initialLead, onBack }
         <p className="text-sm mb-3">{lead.problem}</p>
         <PhotoThumbnails photos={lead.photos} />
 
-        {messages.length > 0 && (
-          <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3 mb-3">
-            <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5B6B7D" }}>Messages</div>
-            <div className="space-y-2">
+        <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3 mb-3">
+          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5B6B7D" }}>Messages</div>
+          {messages.length > 0 && (
+            <div className="space-y-2 mb-2">
               {messages.map((m, i) => (
                 <div key={i} className="text-sm px-3 py-2 rounded-sm max-w-[90%]" style={{ background: m.role === "assistant" ? "#FFF1E6" : "#EEF2F6", marginLeft: m.role === "customer" ? "auto" : 0 }}>{m.text}</div>
               ))}
             </div>
-            {awaitingReply && (
-              <div className="flex gap-2 mt-2">
-                <input value={answerDraft} onChange={(e) => setAnswerDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendReply()}
-                  placeholder="Type your reply…" className="flex-1 text-sm border rounded-sm px-2 py-1.5" style={{ borderColor: "#e3dbc8" }} />
-                <button onClick={sendReply} disabled={sending} style={{ background: "#FF6A13" }} className="text-white px-3 rounded-sm">
-                  {sending ? <Loader2 className="animate-spin" size={14} /> : <Send size={14} />}
-                </button>
-              </div>
-            )}
+          )}
+          <div className="flex gap-2">
+            <input value={answerDraft} onChange={(e) => setAnswerDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendReply()}
+              placeholder="Send a message…" className="flex-1 text-sm border rounded-sm px-2 py-1.5" style={{ borderColor: "#e3dbc8" }} />
+            <button onClick={sendReply} disabled={sending} style={{ background: "#FF6A13" }} className="text-white px-3 rounded-sm">
+              {sending ? <Loader2 className="animate-spin" size={14} /> : <Send size={14} />}
+            </button>
           </div>
-        )}
+        </div>
 
         {q && (
           <div style={{ borderTop: "1px dashed #d8d0bd" }} className="pt-3 mb-3">
             <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "#5B6B7D" }}>Estimate</div>
             <div className="tm-mono text-lg flex items-center gap-1" style={{ color: "#10233B" }}><Euro size={16} />{total}</div>
+            {lead.status === "quoted" && !lead.booking && (
+              quoteResponded ? (
+                <p className="text-xs mt-2" style={{ color: "#2F8F5B" }}>Thanks — we've let them know.</p>
+              ) : (
+                <div className="mt-2">
+                  <input value={preferredTime} onChange={(e) => setPreferredTime(e.target.value)}
+                    placeholder="Preferred day/time (optional)" className="w-full text-sm border rounded-sm px-2 py-1.5 mb-2" style={{ borderColor: "#e3dbc8" }} />
+                  <div className="flex gap-2">
+                    <button onClick={() => respondToQuote(true)} disabled={quoteResponding} style={{ background: "#2F8F5B" }} className="text-white text-xs font-semibold px-3 py-1.5 rounded-sm flex items-center gap-1">
+                      {quoteResponding ? <Loader2 className="animate-spin" size={12} /> : null} Accept quote
+                    </button>
+                    <button onClick={() => respondToQuote(false)} disabled={quoteResponding} style={{ background: "white", border: "1px solid #e3dbc8", color: "#C2410C" }} className="text-xs font-semibold px-3 py-1.5 rounded-sm">
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              )
+            )}
           </div>
         )}
         {lead.booking && (

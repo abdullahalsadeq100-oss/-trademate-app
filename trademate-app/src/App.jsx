@@ -637,33 +637,124 @@ function ResetPassword({ onDone }) {
 /* ---------------- Role select ---------------- */
 
 function RoleSelect({ onPro, onCustomer, onBrowse, onLegal }) {
+  const steps = [
+    { n: 1, t: "Describe the job", d: "Tell us what you need — add a few photos if it helps explain it." },
+    { n: 2, t: "Get a quote", d: "A professional reviews the job and sends back a price." },
+    { n: 3, t: "Book and pay", d: "Confirm a time that works, then pay securely once it's done." },
+  ];
   return (
-    <div className="max-w-md mx-auto px-4 py-10">
-      <div className="text-center mb-8">
-        <div className="mx-auto" style={{ width: "fit-content" }}><Logo size={64} badgeSize={48} /></div>
-        <div className="tm-display text-xl mt-2" style={{ color: "#10233B" }}>TRADEPLAZA</div>
-        <div className="text-xs tracking-[0.2em] mt-1" style={{ color: "#8b8474" }}>IRELAND</div>
+    <div>
+      {/* Nav */}
+      <div className="max-w-5xl mx-auto px-4 py-5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Logo size={36} badgeSize={28} />
+          <span className="tm-display text-sm" style={{ color: "#10233B" }}>TRADEPLAZA</span>
+        </div>
+        <button onClick={onPro} className="text-xs font-semibold" style={{ color: "#10233B" }}>I'm a professional</button>
       </div>
 
-      <button onClick={onBrowse} style={{ background: "white", border: "1.5px solid #FF6A13" }} className="w-full rounded-sm p-4 mb-3 flex items-center gap-3 text-left">
-        <Compass size={22} color="#FF6A13" />
-        <div><div className="font-semibold text-sm" style={{ color: "#10233B" }}>Find a tradesperson near me</div>
-        <div className="text-xs" style={{ color: "#5B6B7D" }}>Browse by location & service — no account needed</div></div>
-        <ChevronRight className="ml-auto" size={18} color="#5B6B7D" />
-      </button>
+      {/* Hero */}
+      <div className="max-w-5xl mx-auto px-4 pt-4 pb-14 grid md:grid-cols-2 gap-10 items-center">
+        <div>
+          <h1 className="tm-display leading-tight" style={{ color: "#10233B", fontSize: "clamp(28px, 5vw, 42px)" }}>
+            Hire someone good for the job.
+          </h1>
+          <p className="mt-4 text-base max-w-md" style={{ color: "#5B6B7D" }}>
+            TradePlaza connects you with vetted local professionals — plumbers, electricians, painters, cooks, and more — then handles the quoting, booking, and payment in between.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button onClick={onBrowse} style={{ background: "#FF6A13" }} className="text-white font-semibold px-5 py-3 rounded-sm text-sm">Find a professional</button>
+            <button onClick={onPro} style={{ background: "white", border: "1.5px solid #10233B", color: "#10233B" }} className="font-semibold px-5 py-3 rounded-sm text-sm">I'm a professional</button>
+          </div>
+        </div>
 
-      <button onClick={onPro} style={{ background: "#10233B" }} className="w-full text-white rounded-sm p-4 mb-3 flex items-center gap-3 text-left">
-        <HardHat size={22} />
-        <div><div className="font-semibold text-sm">I'm a tradesperson</div><div className="text-xs text-white/70">Log in or set up your workspace</div></div>
-        <ChevronRight className="ml-auto" size={18} />
-      </button>
+        <div className="flex justify-center md:justify-end">
+          <div style={{ background: "white", border: "1px solid #e3dbc8", width: 260 }} className="rounded-sm shadow-md px-4 py-4 pt-5 relative rotate-[2deg]">
+            <PerforatedTop />
+            <div className="flex items-start justify-between mb-2">
+              <div className="tm-mono text-xs" style={{ color: "#5B6B7D" }}>TP-0143</div>
+              <Stamp status="booked" />
+            </div>
+            <div className="font-semibold text-sm mb-1" style={{ color: "#10233B" }}>Kitchen tap replacement</div>
+            <div className="text-xs mb-3" style={{ color: "#5B6B7D" }}>Thu 14 May · 10:00–12:00</div>
+            <div className="tm-mono text-xl" style={{ color: "#10233B" }}>€120</div>
+          </div>
+        </div>
+      </div>
 
-      <button onClick={onCustomer} style={{ background: "white", border: "1.5px solid #e3dbc8" }} className="w-full rounded-sm p-4 flex items-center gap-3 text-left">
-        <UserRound size={22} color="#10233B" />
-        <div><div className="font-semibold text-sm">Check on a job I already booked</div><div className="text-xs" style={{ color: "#5B6B7D" }}>Look up every job with just your phone number</div></div>
-        <ChevronRight className="ml-auto" size={18} color="#5B6B7D" />
-      </button>
-      <LegalLinks onLegal={onLegal} />
+      {/* Stats */}
+      <div style={{ borderTop: "1px solid #e3dbc8", borderBottom: "1px solid #e3dbc8" }} className="py-6">
+        <div className="max-w-5xl mx-auto px-4 grid grid-cols-3 gap-4 text-center">
+          <div><div className="tm-mono text-2xl" style={{ color: "#10233B" }}>{SERVICES.length - 1}+</div><div className="text-xs mt-1" style={{ color: "#5B6B7D" }}>Services covered</div></div>
+          <div><div className="tm-mono text-2xl" style={{ color: "#10233B" }}>100%</div><div className="text-xs mt-1" style={{ color: "#5B6B7D" }}>Goes to the professional</div></div>
+          <div><div className="tm-mono text-2xl" style={{ color: "#10233B" }}>Free</div><div className="text-xs mt-1" style={{ color: "#5B6B7D" }}>To use right now</div></div>
+        </div>
+      </div>
+
+      {/* How it works */}
+      <div className="max-w-3xl mx-auto px-4 py-14">
+        <h2 className="tm-display text-xl mb-8" style={{ color: "#10233B" }}>How it works</h2>
+        <div className="space-y-6">
+          {steps.map((s) => (
+            <div key={s.n} className="flex gap-4">
+              <div className="tm-mono text-sm shrink-0 w-6" style={{ color: "#FF6A13" }}>{s.n}</div>
+              <div>
+                <div className="font-semibold text-sm" style={{ color: "#10233B" }}>{s.t}</div>
+                <div className="text-sm mt-0.5" style={{ color: "#5B6B7D" }}>{s.d}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Services */}
+      <div style={{ background: "white", borderTop: "1px solid #e3dbc8", borderBottom: "1px solid #e3dbc8" }} className="py-14">
+        <div className="max-w-3xl mx-auto px-4">
+          <h2 className="tm-display text-xl mb-2" style={{ color: "#10233B" }}>Whatever the job is</h2>
+          <p className="text-sm mb-6" style={{ color: "#5B6B7D" }}>From emergency call-outs to a weekly massage — if it's a real skill, someone on TradePlaza probably offers it.</p>
+          <div className="flex flex-wrap gap-2">
+            {SERVICES.filter((s) => s !== "Other").map((s) => (
+              <span key={s} className="text-xs px-2.5 py-1 rounded-sm" style={{ border: "1px solid #e3dbc8", color: "#5B6B7D" }}>{s}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Trust */}
+      <div className="max-w-3xl mx-auto px-4 py-14">
+        <div className="flex items-start gap-4">
+          <div className="shrink-0 mt-1"><VerifiedBadge /></div>
+          <div>
+            <h2 className="tm-display text-xl mb-2" style={{ color: "#10233B" }}>Ask to see the badge</h2>
+            <p className="text-sm" style={{ color: "#5B6B7D" }}>Professionals can submit their trade licence and insurance for review. Once approved, their profile shows a Verified badge — so you know who you're actually letting in the door.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Get started */}
+      <div className="max-w-md mx-auto px-4 pb-10">
+        <h2 className="tm-display text-lg mb-4 text-center" style={{ color: "#10233B" }}>Get started</h2>
+
+        <button onClick={onBrowse} style={{ background: "white", border: "1.5px solid #FF6A13" }} className="w-full rounded-sm p-4 mb-3 flex items-center gap-3 text-left">
+          <Compass size={22} color="#FF6A13" />
+          <div><div className="font-semibold text-sm" style={{ color: "#10233B" }}>Find a professional near me</div>
+          <div className="text-xs" style={{ color: "#5B6B7D" }}>Browse by location & service — no account needed</div></div>
+          <ChevronRight className="ml-auto" size={18} color="#5B6B7D" />
+        </button>
+
+        <button onClick={onPro} style={{ background: "#10233B" }} className="w-full text-white rounded-sm p-4 mb-3 flex items-center gap-3 text-left">
+          <HardHat size={22} />
+          <div><div className="font-semibold text-sm">I'm a professional</div><div className="text-xs text-white/70">Log in or set up your workspace</div></div>
+          <ChevronRight className="ml-auto" size={18} />
+        </button>
+
+        <button onClick={onCustomer} style={{ background: "white", border: "1.5px solid #e3dbc8" }} className="w-full rounded-sm p-4 flex items-center gap-3 text-left">
+          <UserRound size={22} color="#10233B" />
+          <div><div className="font-semibold text-sm">Check on a job I already booked</div><div className="text-xs" style={{ color: "#5B6B7D" }}>Look up every job with just your phone number</div></div>
+          <ChevronRight className="ml-auto" size={18} color="#5B6B7D" />
+        </button>
+        <LegalLinks onLegal={onLegal} />
+      </div>
     </div>
   );
 }

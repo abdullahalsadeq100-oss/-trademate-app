@@ -58,7 +58,7 @@ const SERVICES_FILTER = SERVICES.filter((s) => s !== "Other"); // "Other" isn't 
 const PLATFORM_FEE_START = new Date("2026-11-10T00:00:00Z"); // must match create-checkout-session Edge Function
 const STRIPE_MANDATORY_DATE = new Date("2026-10-20T00:00:00Z");
 const STATUS_LABEL = { new: "NEW ENQUIRY", quoted: "QUOTED", booked: "BOOKED", invoiced: "INVOICED", paid: "PAID", declined: "DECLINED" };
-const STATUS_COLOR = { new: "#8B5CF6", quoted: "#A79FB0", booked: "#7B9FE0", invoiced: "#E2704A", paid: "#4FAE7D", declined: "#7A7286" };
+const STATUS_COLOR = { new: "#8B5CF6", quoted: "#5F5870", booked: "#7B9FE0", invoiced: "#E2704A", paid: "#4FAE7D", declined: "#7D7688" };
 
 const TERMS_TEXT = `Last updated: ${new Date().getFullYear()}
 
@@ -314,7 +314,7 @@ function AddressLookup({ initialLabel, onResolved }) {
         <p className="text-xs mt-1" style={{ color: "#E2704A" }}>Couldn't find that address, try adding more detail (town, county).</p>
       )}
       {status === "idle" && !resolved && (
-        <p className="text-[11px] mt-1" style={{ color: "#7A7286" }}>Type your address or nearest town, then click Locate to confirm the exact spot.</p>
+        <p className="text-[11px] mt-1" style={{ color: "#7D7688" }}>Type your address or nearest town, then click Locate to confirm the exact spot.</p>
       )}
     </div>
   );
@@ -390,12 +390,12 @@ function Stamp({ status }) {
 function ChannelBadge({ channel }) {
   const c = CHANNELS.find((x) => x.id === channel) || CHANNELS[0];
   const Icon = c.icon;
-  return <span className="inline-flex items-center gap-1 text-xs" style={{ color: "#A79FB0" }}><Icon size={13} strokeWidth={2.2} />{c.label}</span>;
+  return <span className="inline-flex items-center gap-1 text-xs" style={{ color: "#5F5870" }}><Icon size={13} strokeWidth={2.2} />{c.label}</span>;
 }
 function ServiceChip({ label, active, onClick }) {
   return (
     <button type="button" onClick={onClick} className="text-xs px-2 py-1 rounded-sm font-medium"
-      style={{ border: `1.5px solid ${active ? "#8B5CF6" : "#332C40"}`, background: active ? "#2A2038" : "white", color: active ? "#8B5CF6" : "#A79FB0" }}>
+      style={{ border: `1.5px solid ${active ? "#8B5CF6" : "#DDD5C4"}`, background: active ? "#F3E8FF" : "white", color: active ? "#8B5CF6" : "#5F5870" }}>
       {label}
     </button>
   );
@@ -404,24 +404,24 @@ function PerforatedTop() {
   return (
     <div className="flex justify-between px-3 -mt-3 mb-1 select-none pointer-events-none">
       {Array.from({ length: 14 }).map((_, i) => (
-        <div key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: "#15121C", border: "1px solid #3D3549" }} />
+        <div key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: "#EDE6DA", border: "1px solid #E8E1D2" }} />
       ))}
     </div>
   );
 }
 function Field({ label, children }) {
-  return <div><label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#A79FB0" }}>{label}</label>{children}</div>;
+  return <div><label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#5F5870" }}>{label}</label>{children}</div>;
 }
 function GlobalStyle() {
   return (
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800&family=Lora:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
-      body { background: #15121C; font-family: 'Lora', serif; }
+      body { background: #EDE6DA; font-family: 'Lora', serif; }
       .tm-display { font-family: 'Playfair Display', serif; }
       .tm-mono { font-family: 'IBM Plex Mono', monospace; }
-      .tm-input { width:100%; margin-top:4px; border:1.5px solid #332C40; border-radius:2px; padding:8px 10px; font-size:14px; background:#1E1A28; color:#EDE6DA; }
+      .tm-input { width:100%; margin-top:4px; border:1.5px solid #DDD5C4; border-radius:2px; padding:8px 10px; font-size:14px; background:#FFFFFF; color:#15121C; }
       .tm-input:focus{outline:2px solid #8B5CF6; outline-offset:1px;}
-      .tm-input::placeholder { color:#7A7286; }
+      .tm-input::placeholder { color:#7D7688; }
     `}</style>
   );
 }
@@ -494,9 +494,9 @@ export default function App() {
   const openLegal = (page, fromPhase) => { setReturnPhase(fromPhase); setPhase(page); };
 
   return (
-    <div style={{ fontFamily: "'Lora', serif", background: "#15121C", color: "#EDE6DA", minHeight: "100vh" }} className="w-full">
+    <div style={{ fontFamily: "'Lora', serif", background: "#EDE6DA", color: "#15121C", minHeight: "100vh" }} className="w-full">
       <GlobalStyle />
-      {phase === "loading" && <div className="flex items-center justify-center py-24 text-sm" style={{ color: "#A79FB0" }}><Loader2 className="animate-spin mr-2" size={16} /> Loading…</div>}
+      {phase === "loading" && <div className="flex items-center justify-center py-24 text-sm" style={{ color: "#5F5870" }}><Loader2 className="animate-spin mr-2" size={16} /> Loading…</div>}
       {phase === "role" && <RoleSelect onPro={handleChoosePro} onCustomer={() => setPhase("cust-lookup")} onBrowse={() => setPhase("browse")} onLegal={(p) => openLegal(p, "role")} />}
       {phase === "pro-auth" && <ProAuth session={session} onDone={(biz) => { setBusiness(biz); setPhase("pro-app"); }} onBack={() => setPhase("role")} onLegal={(p) => openLegal(p, "pro-auth")} />}
       {phase === "pro-app" && business && <ProDashboard business={business} onLogout={logout} onBusinessUpdate={setBusiness} />}
@@ -528,24 +528,24 @@ function PaymentResult({ jobNo, outcome, onDone }) {
     <div className="max-w-md mx-auto px-4 py-10 text-center">
       {outcome === "cancelled" && (
         <>
-          <div className="tm-display text-lg mb-2" style={{ color: "#EDE6DA" }}>PAYMENT CANCELLED</div>
-          <p className="text-sm mb-4" style={{ color: "#A79FB0" }}>No charge was made. You can try again any time from your job status page.</p>
+          <div className="tm-display text-lg mb-2" style={{ color: "#15121C" }}>PAYMENT CANCELLED</div>
+          <p className="text-sm mb-4" style={{ color: "#5F5870" }}>No charge was made. You can try again any time from your job status page.</p>
         </>
       )}
       {outcome === "success" && status === "checking" && (
-        <div className="flex items-center justify-center gap-2 text-sm py-8" style={{ color: "#A79FB0" }}><Loader2 className="animate-spin" size={16} /> Confirming your payment…</div>
+        <div className="flex items-center justify-center gap-2 text-sm py-8" style={{ color: "#5F5870" }}><Loader2 className="animate-spin" size={16} /> Confirming your payment…</div>
       )}
       {outcome === "success" && status === "confirmed" && (
         <>
           <CheckCircle2 size={40} color="#4FAE7D" className="mx-auto mb-3" />
-          <div className="tm-display text-lg mb-2" style={{ color: "#EDE6DA" }}>PAYMENT RECEIVED</div>
-          <p className="text-sm mb-1" style={{ color: "#A79FB0" }}>Thanks, {info?.business_name} has been paid €{info?.total} for job {jobNo}.</p>
+          <div className="tm-display text-lg mb-2" style={{ color: "#15121C" }}>PAYMENT RECEIVED</div>
+          <p className="text-sm mb-1" style={{ color: "#5F5870" }}>Thanks, {info?.business_name} has been paid €{info?.total} for job {jobNo}.</p>
         </>
       )}
       {outcome === "success" && status === "unconfirmed" && (
         <>
-          <div className="tm-display text-lg mb-2" style={{ color: "#EDE6DA" }}>PAYMENT PROCESSING</div>
-          <p className="text-sm mb-1" style={{ color: "#A79FB0" }}>Stripe is still confirming this, it can take a few seconds. Check your job status shortly if this doesn't update.</p>
+          <div className="tm-display text-lg mb-2" style={{ color: "#15121C" }}>PAYMENT PROCESSING</div>
+          <p className="text-sm mb-1" style={{ color: "#5F5870" }}>Stripe is still confirming this, it can take a few seconds. Check your job status shortly if this doesn't update.</p>
         </>
       )}
       <button onClick={onDone} style={{ background: "#8B5CF6" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm mt-4">Done</button>
@@ -556,10 +556,10 @@ function PaymentResult({ jobNo, outcome, onDone }) {
 function LegalPage({ title, body, onBack }) {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <button onClick={onBack} className="flex items-center gap-1 text-sm mb-4" style={{ color: "#A79FB0" }}><ArrowLeft size={14} /> Back</button>
-      <div className="tm-display text-lg mb-4" style={{ color: "#EDE6DA" }}>{title.toUpperCase()}</div>
-      <div style={{ background: "#1E1A28", border: "1px solid #332C40" }} className="rounded-sm p-5">
-        <pre className="text-sm whitespace-pre-wrap" style={{ fontFamily: "'Lora', serif", color: "#EDE6DA", lineHeight: 1.6 }}>{body}</pre>
+      <button onClick={onBack} className="flex items-center gap-1 text-sm mb-4" style={{ color: "#5F5870" }}><ArrowLeft size={14} /> Back</button>
+      <div className="tm-display text-lg mb-4" style={{ color: "#15121C" }}>{title.toUpperCase()}</div>
+      <div style={{ background: "#FFFFFF", border: "1px solid #DDD5C4" }} className="rounded-sm p-5">
+        <pre className="text-sm whitespace-pre-wrap" style={{ fontFamily: "'Lora', serif", color: "#15121C", lineHeight: 1.6 }}>{body}</pre>
       </div>
     </div>
   );
@@ -567,7 +567,7 @@ function LegalPage({ title, body, onBack }) {
 
 function LegalLinks({ onLegal, dark }) {
   return (
-    <div className={dark ? "text-[11px]" : "text-center mt-6 text-[11px]"} style={{ color: dark ? "rgba(255,255,255,0.6)" : "#7A7286" }}>
+    <div className={dark ? "text-[11px]" : "text-center mt-6 text-[11px]"} style={{ color: dark ? "rgba(255,255,255,0.6)" : "#7D7688" }}>
       <button onClick={() => onLegal("terms")} className="underline">Terms of Service</button>
       {" · "}
       <button onClick={() => onLegal("privacy")} className="underline">Privacy Policy</button>
@@ -597,7 +597,7 @@ function ResetPassword({ onDone }) {
     return (
       <div className="max-w-md mx-auto px-4 py-10 text-center">
         <CheckCircle2 size={40} color="#4FAE7D" className="mx-auto mb-3" />
-        <div className="tm-display text-lg mb-2" style={{ color: "#EDE6DA" }}>PASSWORD UPDATED</div>
+        <div className="tm-display text-lg mb-2" style={{ color: "#15121C" }}>PASSWORD UPDATED</div>
         <button onClick={onDone} style={{ background: "#8B5CF6" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm mt-2">Continue</button>
       </div>
     );
@@ -605,11 +605,11 @@ function ResetPassword({ onDone }) {
 
   return (
     <div className="max-w-md mx-auto px-4 py-10">
-      <div className="tm-display text-lg mb-1" style={{ color: "#EDE6DA" }}>SET A NEW PASSWORD</div>
-      <p className="text-sm mb-4" style={{ color: "#A79FB0" }}>Choose a new password for your account.</p>
-      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#A79FB0" }}>New password</label>
+      <div className="tm-display text-lg mb-1" style={{ color: "#15121C" }}>SET A NEW PASSWORD</div>
+      <p className="text-sm mb-4" style={{ color: "#5F5870" }}>Choose a new password for your account.</p>
+      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#5F5870" }}>New password</label>
       <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="tm-input" placeholder="At least 6 characters" />
-      <label className="text-xs font-semibold uppercase tracking-wide mt-3 block" style={{ color: "#A79FB0" }}>Confirm password</label>
+      <label className="text-xs font-semibold uppercase tracking-wide mt-3 block" style={{ color: "#5F5870" }}>Confirm password</label>
       <input value={confirm} onChange={(e) => setConfirm(e.target.value)} type="password" className="tm-input" />
       {error && <p className="text-xs mt-2" style={{ color: "#E2704A" }}>{error}</p>}
       <button onClick={submit} disabled={busy} style={{ background: "#8B5CF6" }} className="w-full text-white font-semibold py-2.5 rounded-sm mt-4 flex items-center justify-center gap-2">
@@ -638,63 +638,63 @@ function RoleSelect({ onPro, onCustomer, onBrowse, onLegal }) {
       {/* Nav */}
       <div className="max-w-5xl mx-auto px-4 py-5 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Logo size={36} badgeSize={28} />
-          <span className="tm-display text-sm" style={{ color: "#EDE6DA" }}>TRADEPLAZA</span>
+          <Logo size={56} badgeSize={28} />
+          <span className="tm-display text-sm" style={{ color: "#15121C" }}>TRADEPLAZA</span>
         </div>
-        <button onClick={onPro} className="text-xs font-semibold" style={{ color: "#EDE6DA" }}>I'm a professional</button>
+        <button onClick={onPro} className="text-xs font-semibold" style={{ color: "#15121C" }}>I'm a professional</button>
       </div>
 
       {/* Hero */}
       <div className="max-w-5xl mx-auto px-4 pt-4 pb-14 grid md:grid-cols-2 gap-10 items-center">
         <div>
-          <h1 className="tm-display leading-tight" style={{ color: "#EDE6DA", fontSize: "clamp(28px, 5vw, 42px)" }}>
+          <h1 className="tm-display leading-tight" style={{ color: "#15121C", fontSize: "clamp(28px, 5vw, 42px)" }}>
             Hire someone good for the job.
           </h1>
-          <p className="mt-4 text-base max-w-md" style={{ color: "#A79FB0" }}>
+          <p className="mt-4 text-base max-w-md" style={{ color: "#5F5870" }}>
             TradePlaza connects you with vetted local professionals, plumbers, electricians, painters, cooks, and more, then handles the quoting, booking, and payment in between.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button onClick={onBrowse} style={{ background: "#8B5CF6" }} className="text-white font-semibold px-5 py-3 rounded-sm text-sm">Find a professional</button>
-            <button onClick={onPro} style={{ background: "#1E1A28", border: "1.5px solid #EDE6DA", color: "#EDE6DA" }} className="font-semibold px-5 py-3 rounded-sm text-sm">I'm a professional</button>
+            <button onClick={onPro} style={{ background: "#FFFFFF", border: "1.5px solid #15121C", color: "#15121C" }} className="font-semibold px-5 py-3 rounded-sm text-sm">I'm a professional</button>
           </div>
-          <p className="mt-4 text-xs" style={{ color: "#7A7286" }}>Free to browse. No account needed until you're ready to book.</p>
+          <p className="mt-4 text-xs" style={{ color: "#7D7688" }}>Free to browse. No account needed until you're ready to book.</p>
         </div>
 
         <div className="flex justify-center md:justify-end">
-          <div style={{ background: "#1E1A28", border: "1px solid #332C40", width: 260 }} className="rounded-sm shadow-md px-4 py-4 pt-5 relative rotate-[2deg]">
+          <div style={{ background: "#FFFFFF", border: "1px solid #DDD5C4", width: 260 }} className="rounded-sm shadow-md px-4 py-4 pt-5 relative rotate-[2deg]">
             <PerforatedTop />
             <div className="flex items-start justify-between mb-2">
-              <div className="tm-mono text-xs" style={{ color: "#A79FB0" }}>TP-0143</div>
+              <div className="tm-mono text-xs" style={{ color: "#5F5870" }}>TP-0143</div>
               <Stamp status="booked" />
             </div>
-            <div className="font-semibold text-sm mb-1" style={{ color: "#EDE6DA" }}>Kitchen tap replacement</div>
-            <div className="text-xs mb-3" style={{ color: "#A79FB0" }}>Thu 14 May · 10:00–12:00</div>
-            <div className="tm-mono text-xl" style={{ color: "#EDE6DA" }}>€120</div>
+            <div className="font-semibold text-sm mb-1" style={{ color: "#15121C" }}>Kitchen tap replacement</div>
+            <div className="text-xs mb-3" style={{ color: "#5F5870" }}>Thu 14 May · 10:00–12:00</div>
+            <div className="tm-mono text-xl" style={{ color: "#15121C" }}>€120</div>
           </div>
         </div>
       </div>
 
       {/* Stats */}
-      <div style={{ borderTop: "1px solid #332C40", borderBottom: "1px solid #332C40" }} className="py-6">
+      <div style={{ borderTop: "1px solid #DDD5C4", borderBottom: "1px solid #DDD5C4" }} className="py-6">
         <div className="max-w-5xl mx-auto px-4 grid grid-cols-3 gap-4 text-center">
-          <div><div className="tm-mono text-2xl" style={{ color: "#EDE6DA" }}>{SERVICES.length - 1}+</div><div className="text-xs mt-1" style={{ color: "#A79FB0" }}>Services covered</div></div>
-          <div><div className="tm-mono text-2xl" style={{ color: "#EDE6DA" }}>100%</div><div className="text-xs mt-1" style={{ color: "#A79FB0" }}>Goes to the professional</div></div>
-          <div><div className="tm-mono text-2xl" style={{ color: "#EDE6DA" }}>Free</div><div className="text-xs mt-1" style={{ color: "#A79FB0" }}>To use right now</div></div>
+          <div><div className="tm-mono text-2xl" style={{ color: "#15121C" }}>{SERVICES.length - 1}+</div><div className="text-xs mt-1" style={{ color: "#5F5870" }}>Services covered</div></div>
+          <div><div className="tm-mono text-2xl" style={{ color: "#15121C" }}>100%</div><div className="text-xs mt-1" style={{ color: "#5F5870" }}>Goes to the professional</div></div>
+          <div><div className="tm-mono text-2xl" style={{ color: "#15121C" }}>Free</div><div className="text-xs mt-1" style={{ color: "#5F5870" }}>To use right now</div></div>
         </div>
       </div>
 
       {/* How it works */}
       <div className="max-w-3xl mx-auto px-4 py-14">
-        <h2 className="tm-display text-xl mb-8" style={{ color: "#EDE6DA" }}>How it works</h2>
+        <h2 className="tm-display text-xl mb-8" style={{ color: "#15121C" }}>How it works</h2>
         <div className="relative">
-          <div className="absolute left-[11px] top-2 bottom-2 w-px" style={{ background: "#332C40" }} />
+          <div className="absolute left-[11px] top-2 bottom-2 w-px" style={{ background: "#DDD5C4" }} />
           <div className="space-y-7">
             {steps.map((s) => (
               <div key={s.n} className="flex gap-4 relative">
-                <div style={{ background: "#15121C", border: "1.5px solid #8B5CF6", color: "#8B5CF6" }} className="tm-mono text-xs shrink-0 w-6 h-6 rounded-full flex items-center justify-center z-10">{s.n}</div>
+                <div style={{ background: "#EDE6DA", border: "1.5px solid #8B5CF6", color: "#8B5CF6" }} className="tm-mono text-xs shrink-0 w-6 h-6 rounded-full flex items-center justify-center z-10">{s.n}</div>
                 <div className="pt-0.5">
-                  <div className="font-semibold text-sm" style={{ color: "#EDE6DA" }}>{s.t}</div>
-                  <div className="text-sm mt-0.5" style={{ color: "#A79FB0" }}>{s.d}</div>
+                  <div className="font-semibold text-sm" style={{ color: "#15121C" }}>{s.t}</div>
+                  <div className="text-sm mt-0.5" style={{ color: "#5F5870" }}>{s.d}</div>
                 </div>
               </div>
             ))}
@@ -703,17 +703,17 @@ function RoleSelect({ onPro, onCustomer, onBrowse, onLegal }) {
       </div>
 
       {/* Services */}
-      <div style={{ background: "#1E1A28", borderTop: "1px solid #332C40", borderBottom: "1px solid #332C40" }} className="py-14">
+      <div style={{ background: "#FFFFFF", borderTop: "1px solid #DDD5C4", borderBottom: "1px solid #DDD5C4" }} className="py-14">
         <div className="max-w-3xl mx-auto px-4">
-          <h2 className="tm-display text-xl mb-2" style={{ color: "#EDE6DA" }}>Whatever the job is</h2>
-          <p className="text-sm mb-8" style={{ color: "#A79FB0" }}>From emergency call-outs to a weekly massage, if it's a real skill, someone on TradePlaza probably offers it.</p>
+          <h2 className="tm-display text-xl mb-2" style={{ color: "#15121C" }}>Whatever the job is</h2>
+          <p className="text-sm mb-8" style={{ color: "#5F5870" }}>From emergency call-outs to a weekly massage, if it's a real skill, someone on TradePlaza probably offers it.</p>
           <div className="grid sm:grid-cols-2 gap-x-8 gap-y-6">
             {serviceGroups.map((g) => (
               <div key={g.label}>
-                <div className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: "#7A7286" }}>{g.label}</div>
+                <div className="text-xs font-semibold uppercase tracking-wide mb-2.5" style={{ color: "#7D7688" }}>{g.label}</div>
                 <div className="flex flex-wrap gap-2">
                   {g.items.map((s) => (
-                    <span key={s} className="text-xs px-2.5 py-1 rounded-sm" style={{ border: "1px solid #332C40", color: "#A79FB0" }}>{s}</span>
+                    <span key={s} className="text-xs px-2.5 py-1 rounded-sm" style={{ border: "1px solid #DDD5C4", color: "#5F5870" }}>{s}</span>
                   ))}
                 </div>
               </div>
@@ -724,20 +724,20 @@ function RoleSelect({ onPro, onCustomer, onBrowse, onLegal }) {
 
       {/* Trust */}
       <div className="max-w-3xl mx-auto px-4 py-14">
-        <h2 className="tm-display text-xl mb-8" style={{ color: "#EDE6DA" }}>Built so you can trust who shows up</h2>
+        <h2 className="tm-display text-xl mb-8" style={{ color: "#15121C" }}>Built so you can trust who shows up</h2>
         <div className="grid sm:grid-cols-2 gap-8">
           <div className="flex items-start gap-3">
             <div className="shrink-0 mt-0.5"><VerifiedBadge /></div>
             <div>
-              <div className="font-semibold text-sm mb-1" style={{ color: "#EDE6DA" }}>Ask to see the badge</div>
-              <p className="text-sm" style={{ color: "#A79FB0" }}>Professionals can submit their trade licence and insurance for review. Once approved, their profile shows a Verified badge.</p>
+              <div className="font-semibold text-sm mb-1" style={{ color: "#15121C" }}>Ask to see the badge</div>
+              <p className="text-sm" style={{ color: "#5F5870" }}>Professionals can submit their trade licence and insurance for review. Once approved, their profile shows a Verified badge.</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <div className="shrink-0 mt-0.5"><Euro size={18} color="#4FAE7D" /></div>
             <div>
-              <div className="font-semibold text-sm mb-1" style={{ color: "#EDE6DA" }}>Payment stays protected</div>
-              <p className="text-sm" style={{ color: "#A79FB0" }}>Pay securely through TradePlaza once the job's confirmed. Every job has a proper invoice, not a cash-in-hand guess.</p>
+              <div className="font-semibold text-sm mb-1" style={{ color: "#15121C" }}>Payment stays protected</div>
+              <p className="text-sm" style={{ color: "#5F5870" }}>Pay securely through TradePlaza once the job's confirmed. Every job has a proper invoice, not a cash-in-hand guess.</p>
             </div>
           </div>
         </div>
@@ -745,13 +745,13 @@ function RoleSelect({ onPro, onCustomer, onBrowse, onLegal }) {
 
       {/* Get started */}
       <div className="max-w-md mx-auto px-4 pb-14">
-        <h2 className="tm-display text-lg mb-4 text-center" style={{ color: "#EDE6DA" }}>Get started</h2>
+        <h2 className="tm-display text-lg mb-4 text-center" style={{ color: "#15121C" }}>Get started</h2>
 
-        <button onClick={onBrowse} style={{ background: "#1E1A28", border: "1.5px solid #8B5CF6" }} className="w-full rounded-sm p-4 mb-3 flex items-center gap-3 text-left">
+        <button onClick={onBrowse} style={{ background: "#FFFFFF", border: "1.5px solid #8B5CF6" }} className="w-full rounded-sm p-4 mb-3 flex items-center gap-3 text-left">
           <Compass size={22} color="#8B5CF6" />
-          <div><div className="font-semibold text-sm" style={{ color: "#EDE6DA" }}>Find a professional near me</div>
-          <div className="text-xs" style={{ color: "#A79FB0" }}>Browse by location & service, no account needed</div></div>
-          <ChevronRight className="ml-auto" size={18} color="#A79FB0" />
+          <div><div className="font-semibold text-sm" style={{ color: "#15121C" }}>Find a professional near me</div>
+          <div className="text-xs" style={{ color: "#5F5870" }}>Browse by location & service, no account needed</div></div>
+          <ChevronRight className="ml-auto" size={18} color="#5F5870" />
         </button>
 
         <button onClick={onPro} style={{ background: "#5B3A87" }} className="w-full text-white rounded-sm p-4 mb-3 flex items-center gap-3 text-left">
@@ -760,10 +760,10 @@ function RoleSelect({ onPro, onCustomer, onBrowse, onLegal }) {
           <ChevronRight className="ml-auto" size={18} />
         </button>
 
-        <button onClick={onCustomer} style={{ background: "#1E1A28", border: "1.5px solid #332C40" }} className="w-full rounded-sm p-4 flex items-center gap-3 text-left">
-          <UserRound size={22} color="#EDE6DA" />
-          <div><div className="font-semibold text-sm">Check on a job I already booked</div><div className="text-xs" style={{ color: "#A79FB0" }}>Look up every job with just your phone number</div></div>
-          <ChevronRight className="ml-auto" size={18} color="#A79FB0" />
+        <button onClick={onCustomer} style={{ background: "#FFFFFF", border: "1.5px solid #DDD5C4" }} className="w-full rounded-sm p-4 flex items-center gap-3 text-left">
+          <UserRound size={22} color="#15121C" />
+          <div><div className="font-semibold text-sm">Check on a job I already booked</div><div className="text-xs" style={{ color: "#5F5870" }}>Look up every job with just your phone number</div></div>
+          <ChevronRight className="ml-auto" size={18} color="#5F5870" />
         </button>
       </div>
 
@@ -771,7 +771,7 @@ function RoleSelect({ onPro, onCustomer, onBrowse, onLegal }) {
       <div style={{ background: "#5B3A87" }} className="py-10">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Logo size={28} badgeSize={22} rotate={false} />
+            <Logo size={44} badgeSize={22} rotate={false} />
             <span className="tm-display text-xs text-white">TRADEPLAZA</span>
           </div>
           <LegalLinks onLegal={onLegal} dark />
@@ -863,17 +863,17 @@ function ProAuth({ session, onDone, onBack, onLegal }) {
 
   return (
     <div className="max-w-md mx-auto px-4 py-8">
-      <button onClick={onBack} className="flex items-center gap-1 text-sm mb-4" style={{ color: "#A79FB0" }}><ArrowLeft size={14} /> Back</button>
+      <button onClick={onBack} className="flex items-center gap-1 text-sm mb-4" style={{ color: "#5F5870" }}><ArrowLeft size={14} /> Back</button>
 
       {mode === "forgot" && (
         <>
-          <div className="tm-display text-lg mb-1" style={{ color: "#EDE6DA" }}>RESET PASSWORD</div>
+          <div className="tm-display text-lg mb-1" style={{ color: "#15121C" }}>RESET PASSWORD</div>
           {resetSent ? (
-            <p className="text-sm" style={{ color: "#A79FB0" }}>Check your email for a reset link.</p>
+            <p className="text-sm" style={{ color: "#5F5870" }}>Check your email for a reset link.</p>
           ) : (
             <>
-              <p className="text-sm mb-3" style={{ color: "#A79FB0" }}>Enter your email and we'll send a reset link.</p>
-              <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#A79FB0" }}>Email</label>
+              <p className="text-sm mb-3" style={{ color: "#5F5870" }}>Enter your email and we'll send a reset link.</p>
+              <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#5F5870" }}>Email</label>
               <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="tm-input" placeholder="you@business.ie" />
               {error && <p className="text-xs mt-2" style={{ color: "#E2704A" }}>{error}</p>}
               <button onClick={sendResetEmail} disabled={busy} style={{ background: "#8B5CF6" }} className="w-full text-white font-semibold py-2.5 rounded-sm mt-4 flex items-center justify-center gap-2">
@@ -881,29 +881,29 @@ function ProAuth({ session, onDone, onBack, onLegal }) {
               </button>
             </>
           )}
-          <button onClick={() => { setMode("login"); setError(""); setResetSent(false); }} className="text-xs mt-4 underline" style={{ color: "#A79FB0" }}>Back to log in</button>
+          <button onClick={() => { setMode("login"); setError(""); setResetSent(false); }} className="text-xs mt-4 underline" style={{ color: "#5F5870" }}>Back to log in</button>
         </>
       )}
 
       {mode !== "setup" && mode !== "forgot" && (
         <>
-          <div className="flex mb-4 rounded-sm overflow-hidden border" style={{ borderColor: "#332C40" }}>
+          <div className="flex mb-4 rounded-sm overflow-hidden border" style={{ borderColor: "#DDD5C4" }}>
             {["login", "signup"].map((m) => (
               <button key={m} onClick={() => { setMode(m); setError(""); }} className="flex-1 py-2 text-sm font-semibold"
-                style={{ background: mode === m ? "#5B3A87" : "#1E1A28", color: mode === m ? "white" : "#A79FB0" }}>
+                style={{ background: mode === m ? "#5B3A87" : "#FFFFFF", color: mode === m ? "white" : "#5F5870" }}>
                 {m === "login" ? "Log in" : "Sign up"}
               </button>
             ))}
           </div>
-          <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#A79FB0" }}>Email</label>
+          <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#5F5870" }}>Email</label>
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" className="tm-input" placeholder="you@business.ie" />
-          <label className="text-xs font-semibold uppercase tracking-wide mt-3 block" style={{ color: "#A79FB0" }}>Password</label>
+          <label className="text-xs font-semibold uppercase tracking-wide mt-3 block" style={{ color: "#5F5870" }}>Password</label>
           <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="tm-input" placeholder="At least 6 characters" />
           {mode === "login" && (
-            <button onClick={() => { setMode("forgot"); setError(""); }} className="text-xs mt-1 underline" style={{ color: "#A79FB0" }}>Forgot password?</button>
+            <button onClick={() => { setMode("forgot"); setError(""); }} className="text-xs mt-1 underline" style={{ color: "#5F5870" }}>Forgot password?</button>
           )}
           {mode === "signup" && (
-            <label className="flex items-start gap-2 text-xs mt-3" style={{ color: "#A79FB0" }}>
+            <label className="flex items-start gap-2 text-xs mt-3" style={{ color: "#5F5870" }}>
               <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} className="mt-0.5" />
               <span>I agree to the Terms of Service and Privacy Policy</span>
             </label>
@@ -915,13 +915,13 @@ function ProAuth({ session, onDone, onBack, onLegal }) {
           </button>
 
           <div className="flex items-center gap-2 my-4">
-            <div className="flex-1 h-px" style={{ background: "#332C40" }} />
-            <span className="text-[11px] uppercase tracking-wide" style={{ color: "#7A7286" }}>or</span>
-            <div className="flex-1 h-px" style={{ background: "#332C40" }} />
+            <div className="flex-1 h-px" style={{ background: "#DDD5C4" }} />
+            <span className="text-[11px] uppercase tracking-wide" style={{ color: "#7D7688" }}>or</span>
+            <div className="flex-1 h-px" style={{ background: "#DDD5C4" }} />
           </div>
           <button
             onClick={() => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}?oauth_return=1` } })}
-            style={{ background: "#1E1A28", border: "1.5px solid #332C40" }}
+            style={{ background: "#FFFFFF", border: "1.5px solid #DDD5C4" }}
             className="w-full font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2 text-sm"
           >
             <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.5 5.1 29.5 3 24 3c-7.7 0-14.4 4.4-17.7 11.7z"/><path fill="#4CAF50" d="M24 45c5.4 0 10.3-1.8 14.1-5.4l-6.5-5.5C29.5 35.7 26.9 36.5 24 36.5c-5.3 0-9.7-3.4-11.3-8.1l-6.6 5.1C9.5 40.4 16.2 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.6l6.5 5.5C41.5 36.1 45 30.8 45 24c0-1.4-.1-2.7-.4-3.5z"/></svg>
@@ -933,8 +933,8 @@ function ProAuth({ session, onDone, onBack, onLegal }) {
 
       {mode === "setup" && (
         <>
-          <div className="tm-display text-lg mb-1" style={{ color: "#EDE6DA" }}>SET UP YOUR WORKSPACE</div>
-          <p className="text-sm mb-3" style={{ color: "#A79FB0" }}>One more step, tell customers who you are.</p>
+          <div className="tm-display text-lg mb-1" style={{ color: "#15121C" }}>SET UP YOUR WORKSPACE</div>
+          <p className="text-sm mb-3" style={{ color: "#5F5870" }}>One more step, tell customers who you are.</p>
           <Field label="Business name"><input value={bizName} onChange={(e) => setBizName(e.target.value)} className="tm-input" placeholder="Byrne Plumbing & Heating" /></Field>
           <Field label="Where are you based?">
             <AddressLookup onResolved={setLocation} />
@@ -1002,16 +1002,16 @@ function BrowseTrades({ onBack, onViewStatus, onLegal }) {
     return (
       <div className="max-w-md mx-auto px-4 py-8 text-center">
         <CheckCircle2 size={40} color="#4FAE7D" className="mx-auto mb-3" />
-        <div className="tm-display text-lg mb-2" style={{ color: "#EDE6DA" }}>REQUEST SENT</div>
-        <p className="text-sm mb-1" style={{ color: "#A79FB0" }}>{confirmation.business.name} will be in touch shortly.</p>
-        <div style={{ background: "#1E1A28", border: "1px solid #332C40" }} className="rounded-sm p-3 my-4 inline-block">
-          <div className="text-[11px] uppercase tracking-wide" style={{ color: "#7A7286" }}>Your job number</div>
-          <div className="tm-mono text-lg" style={{ color: "#EDE6DA" }}>{confirmation.lead.job_no}</div>
+        <div className="tm-display text-lg mb-2" style={{ color: "#15121C" }}>REQUEST SENT</div>
+        <p className="text-sm mb-1" style={{ color: "#5F5870" }}>{confirmation.business.name} will be in touch shortly.</p>
+        <div style={{ background: "#FFFFFF", border: "1px solid #DDD5C4" }} className="rounded-sm p-3 my-4 inline-block">
+          <div className="text-[11px] uppercase tracking-wide" style={{ color: "#7D7688" }}>Your job number</div>
+          <div className="tm-mono text-lg" style={{ color: "#15121C" }}>{confirmation.lead.job_no}</div>
         </div>
-        <p className="text-xs mb-4" style={{ color: "#7A7286" }}>Save this and your phone number, you'll need both to check status later.</p>
+        <p className="text-xs mb-4" style={{ color: "#7D7688" }}>Save this and your phone number, you'll need both to check status later.</p>
         <div className="flex flex-col gap-2">
           <button onClick={() => onViewStatus(confirmation.business.name, confirmation.lead, confirmation.business.notify_phone)} style={{ background: "#8B5CF6" }} className="text-white text-sm font-semibold py-2.5 rounded-sm">Check status now</button>
-          <button onClick={() => setConfirmation(null)} className="text-sm py-2" style={{ color: "#A79FB0" }}>Back to browsing</button>
+          <button onClick={() => setConfirmation(null)} className="text-sm py-2" style={{ color: "#5F5870" }}>Back to browsing</button>
         </div>
       </div>
     );
@@ -1019,10 +1019,10 @@ function BrowseTrades({ onBack, onViewStatus, onLegal }) {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <button onClick={onBack} className="flex items-center gap-1 text-sm mb-4" style={{ color: "#A79FB0" }}><ArrowLeft size={14} /> Back</button>
-      <div className="tm-display text-lg mb-1" style={{ color: "#EDE6DA" }}>TRADESPEOPLE NEAR YOU</div>
+      <button onClick={onBack} className="flex items-center gap-1 text-sm mb-4" style={{ color: "#5F5870" }}><ArrowLeft size={14} /> Back</button>
+      <div className="tm-display text-lg mb-1" style={{ color: "#15121C" }}>TRADESPEOPLE NEAR YOU</div>
 
-      <div className="flex items-center gap-2 mb-3 text-xs" style={{ color: "#A79FB0" }}>
+      <div className="flex items-center gap-2 mb-3 text-xs" style={{ color: "#5F5870" }}>
         {geoState === "checking" && <><Loader2 className="animate-spin" size={13} /> Finding your location…</>}
         {geoState === "granted" && <><Navigation size={13} /> Using your device location</>}
         {geoState === "denied" && !manualLoc && (
@@ -1045,28 +1045,28 @@ function BrowseTrades({ onBack, onViewStatus, onLegal }) {
         {SERVICES_FILTER.map((s) => <ServiceChip key={s} label={s} active={serviceFilter.includes(s)} onClick={() => toggleService(s)} />)}
       </div>
 
-      {!loaded && <div className="text-sm py-8 text-center" style={{ color: "#A79FB0" }}>Loading…</div>}
-      {loaded && listed.length === 0 && <div className="text-center py-16 text-sm" style={{ color: "#A79FB0" }}>No tradespeople match yet.</div>}
+      {!loaded && <div className="text-sm py-8 text-center" style={{ color: "#5F5870" }}>Loading…</div>}
+      {loaded && listed.length === 0 && <div className="text-center py-16 text-sm" style={{ color: "#5F5870" }}>No tradespeople match yet.</div>}
 
       <div className="space-y-3">
         {listed.map((b) => (
-          <div key={b.id} style={{ background: "#1E1A28", border: "1px solid #332C40", borderLeft: `4px solid ${b.theme_color || "#8B5CF6"}` }} className="rounded-sm p-4 pt-5 relative">
+          <div key={b.id} style={{ background: "#FFFFFF", border: "1px solid #DDD5C4", borderLeft: `4px solid ${b.theme_color || "#8B5CF6"}` }} className="rounded-sm p-4 pt-5 relative">
             <PerforatedTop />
             <div className="flex items-start justify-between mb-1">
-              <div className="font-semibold text-sm flex items-center gap-1.5" style={{ color: "#EDE6DA" }}>{b.name}{b.verification_status === "verified" && <VerifiedBadge />}</div>
-              {b.distance != null && <div className="tm-mono text-xs shrink-0" style={{ color: "#A79FB0" }}>{b.distance.toFixed(1)} km away</div>}
+              <div className="font-semibold text-sm flex items-center gap-1.5" style={{ color: "#15121C" }}>{b.name}{b.verification_status === "verified" && <VerifiedBadge />}</div>
+              {b.distance != null && <div className="tm-mono text-xs shrink-0" style={{ color: "#5F5870" }}>{b.distance.toFixed(1)} km away</div>}
             </div>
             {ratings[b.id] && ratings[b.id].length > 0 && (
-              <div className="flex items-center gap-1 mb-1 text-xs" style={{ color: "#7A7286" }}>
+              <div className="flex items-center gap-1 mb-1 text-xs" style={{ color: "#7D7688" }}>
                 <span style={{ color: "#8B5CF6" }}>★</span>
-                <span className="font-semibold" style={{ color: "#EDE6DA" }}>{(ratings[b.id].reduce((a, c) => a + c, 0) / ratings[b.id].length).toFixed(1)}</span>
+                <span className="font-semibold" style={{ color: "#15121C" }}>{(ratings[b.id].reduce((a, c) => a + c, 0) / ratings[b.id].length).toFixed(1)}</span>
                 <span>({ratings[b.id].length} review{ratings[b.id].length > 1 ? "s" : ""})</span>
               </div>
             )}
-            <div className="text-xs mb-2 flex items-center gap-1" style={{ color: "#A79FB0" }}><MapPin size={11} /> {b.area}</div>
+            <div className="text-xs mb-2 flex items-center gap-1" style={{ color: "#5F5870" }}><MapPin size={11} /> {b.area}</div>
             {b.blurb && <p className="text-sm mb-2">{b.blurb}</p>}
             {(b.services || []).length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-3">{b.services.map((s) => <span key={s} className="text-[11px] px-1.5 py-0.5 rounded-sm" style={{ background: "#15121C", color: "#A79FB0" }}>{s}</span>)}</div>
+              <div className="flex flex-wrap gap-1 mb-3">{b.services.map((s) => <span key={s} className="text-[11px] px-1.5 py-0.5 rounded-sm" style={{ background: "#EDE6DA", color: "#5F5870" }}>{s}</span>)}</div>
             )}
             <button onClick={() => setEnquiryBiz(b)} style={{ background: b.theme_color || "#8B5CF6" }} className="text-white text-xs font-semibold px-3 py-2 rounded-sm">Request a quote</button>
           </div>
@@ -1092,10 +1092,10 @@ function PhotoPicker({ files, onChange }) {
 
   return (
     <div>
-      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#A79FB0" }}>Photos (optional)</label>
+      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#5F5870" }}>Photos (optional)</label>
       <div className="flex flex-wrap gap-2 mt-1">
         {files.map((f, i) => (
-          <div key={i} className="relative w-16 h-16 rounded-sm overflow-hidden border" style={{ borderColor: "#332C40" }}>
+          <div key={i} className="relative w-16 h-16 rounded-sm overflow-hidden border" style={{ borderColor: "#DDD5C4" }}>
             <img src={URL.createObjectURL(f)} alt="" className="w-full h-full object-cover" />
             <button type="button" onClick={() => removeAt(i)} className="absolute top-0 right-0 bg-black/60 text-white rounded-bl-sm p-0.5">
               <X size={12} />
@@ -1105,7 +1105,7 @@ function PhotoPicker({ files, onChange }) {
         {files.length < 5 && (
           <button type="button" onClick={() => inputRef.current?.click()}
             className="w-16 h-16 rounded-sm border-2 border-dashed flex flex-col items-center justify-center"
-            style={{ borderColor: "#332C40", color: "#7A7286" }}>
+            style={{ borderColor: "#DDD5C4", color: "#7D7688" }}>
             <Camera size={18} />
             <span className="text-[9px] mt-0.5">Add</span>
           </button>
@@ -1122,7 +1122,7 @@ function PhotoThumbnails({ photos }) {
   return (
     <div className="flex flex-wrap gap-2 mt-2">
       {photos.map((url, i) => (
-        <a key={i} href={url} target="_blank" rel="noreferrer" className="w-16 h-16 rounded-sm overflow-hidden border block" style={{ borderColor: "#332C40" }}>
+        <a key={i} href={url} target="_blank" rel="noreferrer" className="w-16 h-16 rounded-sm overflow-hidden border block" style={{ borderColor: "#DDD5C4" }}>
           <img src={url} alt="" className="w-full h-full object-cover" />
         </a>
       ))}
@@ -1161,13 +1161,13 @@ function PublicEnquiryModal({ business, onClose, onSubmitted }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div style={{ background: "#15121C" }} className="w-full sm:max-w-md rounded-t-lg sm:rounded-sm max-h-[90vh] overflow-y-auto">
+      <div style={{ background: "#EDE6DA" }} className="w-full sm:max-w-md rounded-t-lg sm:rounded-sm max-h-[90vh] overflow-y-auto">
         <div style={{ background: "#5B3A87" }} className="text-white px-4 py-3 flex items-center justify-between">
           <div className="tm-display text-sm">REQUEST A QUOTE</div>
           <button onClick={onClose}><X size={18} /></button>
         </div>
         <div className="p-4 space-y-3">
-          <p className="text-sm" style={{ color: "#A79FB0" }}>Sending to <strong style={{ color: "#EDE6DA" }}>{business.name}</strong></p>
+          <p className="text-sm" style={{ color: "#5F5870" }}>Sending to <strong style={{ color: "#15121C" }}>{business.name}</strong></p>
           <Field label="Your name"><input value={form.name} onChange={(e) => set("name", e.target.value)} className="tm-input" placeholder="Sarah Byrne" /></Field>
           <Field label="Phone"><input value={form.phone} onChange={(e) => set("phone", e.target.value)} className="tm-input" placeholder="087 123 4567" /></Field>
           <Field label="Email (optional, for updates by email too)"><input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} className="tm-input" placeholder="sarah@email.com" /></Field>
@@ -1176,12 +1176,12 @@ function PublicEnquiryModal({ business, onClose, onSubmitted }) {
           <PhotoPicker files={photos} onChange={setPhotos} />
           <input type="text" value={website} onChange={(e) => setWebsite(e.target.value)} tabIndex={-1} autoComplete="off"
             style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }} aria-hidden="true" />
-          <label className="flex items-start gap-2 text-xs" style={{ color: "#A79FB0" }}>
+          <label className="flex items-start gap-2 text-xs" style={{ color: "#5F5870" }}>
             <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} className="mt-0.5" />
             <span>I agree to the Terms of Service and Privacy Policy</span>
           </label>
           {error && <p className="text-xs" style={{ color: "#E2704A" }}>{error}</p>}
-          <button disabled={!canSubmit || saving} onClick={submit} style={{ background: canSubmit ? "#8B5CF6" : "#3D3549" }} className="w-full text-white font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2">
+          <button disabled={!canSubmit || saving} onClick={submit} style={{ background: canSubmit ? "#8B5CF6" : "#E8E1D2" }} className="w-full text-white font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2">
             {saving ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />} Send request
           </button>
         </div>
@@ -1210,10 +1210,10 @@ function CustomerLookup({ onBack, onFound }) {
 
   return (
     <div className="max-w-md mx-auto px-4 py-8">
-      <button onClick={onBack} className="flex items-center gap-1 text-sm mb-4" style={{ color: "#A79FB0" }}><ArrowLeft size={14} /> Back</button>
-      <div className="tm-display text-lg mb-1" style={{ color: "#EDE6DA" }}>CHECK YOUR JOBS</div>
-      <p className="text-sm mb-4" style={{ color: "#A79FB0" }}>Enter your phone number to see every job you've requested, across any tradesperson.</p>
-      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#A79FB0" }}>Phone number</label>
+      <button onClick={onBack} className="flex items-center gap-1 text-sm mb-4" style={{ color: "#5F5870" }}><ArrowLeft size={14} /> Back</button>
+      <div className="tm-display text-lg mb-1" style={{ color: "#15121C" }}>CHECK YOUR JOBS</div>
+      <p className="text-sm mb-4" style={{ color: "#5F5870" }}>Enter your phone number to see every job you've requested, across any tradesperson.</p>
+      <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#5F5870" }}>Phone number</label>
       <div className="flex gap-2 mt-1">
         <input value={phone} onChange={(e) => setPhone(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} className="tm-input !mt-0 flex-1" placeholder="087 123 4567" />
         <button onClick={submit} disabled={busy} style={{ background: "#8B5CF6" }} className="text-white font-semibold px-4 rounded-sm flex items-center justify-center shrink-0">
@@ -1223,17 +1223,17 @@ function CustomerLookup({ onBack, onFound }) {
       {error && <p className="text-xs mt-2" style={{ color: "#E2704A" }}>{error}</p>}
 
       {results && results.length === 0 && (
-        <p className="text-sm mt-6 text-center" style={{ color: "#A79FB0" }}>No jobs found for that number.</p>
+        <p className="text-sm mt-6 text-center" style={{ color: "#5F5870" }}>No jobs found for that number.</p>
       )}
 
       {results && results.length > 0 && (
         <div className="mt-6 space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "#A79FB0" }}>{results.length} job{results.length > 1 ? "s" : ""} found</div>
+          <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "#5F5870" }}>{results.length} job{results.length > 1 ? "s" : ""} found</div>
           {results.map(({ lead, business_name, business_phone }) => (
             <button key={lead.id} onClick={() => onFound(business_name, lead, business_phone)} className="w-full text-left">
-              <div style={{ background: "#1E1A28", border: "1px solid #332C40" }} className="rounded-sm px-4 py-3 flex items-center justify-between">
+              <div style={{ background: "#FFFFFF", border: "1px solid #DDD5C4" }} className="rounded-sm px-4 py-3 flex items-center justify-between">
                 <div>
-                  <div className="tm-mono text-xs" style={{ color: "#A79FB0" }}>{lead.job_no} · {business_name}</div>
+                  <div className="tm-mono text-xs" style={{ color: "#5F5870" }}>{lead.job_no} · {business_name}</div>
                   <div className="text-sm font-semibold truncate max-w-[220px]">{lead.problem}</div>
                 </div>
                 <Stamp status={lead.status} />
@@ -1325,32 +1325,32 @@ function CustomerView({ businessName, businessPhone, lead: initialLead, onBack }
 
   return (
     <div className="max-w-md mx-auto px-4 py-8">
-      <button onClick={onBack} className="flex items-center gap-1 text-sm mb-4" style={{ color: "#A79FB0" }}><ArrowLeft size={14} /> Check another job</button>
-      <div style={{ background: "#1E1A28", border: "1px solid #332C40" }} className="rounded-sm p-4 pt-5 relative">
+      <button onClick={onBack} className="flex items-center gap-1 text-sm mb-4" style={{ color: "#5F5870" }}><ArrowLeft size={14} /> Check another job</button>
+      <div style={{ background: "#FFFFFF", border: "1px solid #DDD5C4" }} className="rounded-sm p-4 pt-5 relative">
         <PerforatedTop />
         <div className="flex items-start justify-between mb-2">
           <div>
-            <div className="tm-mono text-xs" style={{ color: "#A79FB0" }}>{lead.job_no}</div>
-            <div className="text-sm font-semibold" style={{ color: "#EDE6DA" }}>{businessName}</div>
-            {businessPhone && <div className="text-xs flex items-center gap-1 mt-0.5" style={{ color: "#A79FB0" }}><Phone size={11} /> {businessPhone}</div>}
+            <div className="tm-mono text-xs" style={{ color: "#5F5870" }}>{lead.job_no}</div>
+            <div className="text-sm font-semibold" style={{ color: "#15121C" }}>{businessName}</div>
+            {businessPhone && <div className="text-xs flex items-center gap-1 mt-0.5" style={{ color: "#5F5870" }}><Phone size={11} /> {businessPhone}</div>}
           </div>
           <Stamp status={lead.status} />
         </div>
         <p className="text-sm mb-3">{lead.problem}</p>
         <PhotoThumbnails photos={lead.photos} />
 
-        <div style={{ borderTop: "1px dashed #3D3549" }} className="pt-3 mb-3">
-          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#A79FB0" }}>Messages</div>
+        <div style={{ borderTop: "1px dashed #E8E1D2" }} className="pt-3 mb-3">
+          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5F5870" }}>Messages</div>
           {messages.length > 0 && (
             <div className="space-y-2 mb-2">
               {messages.map((m, i) => (
-                <div key={i} className="text-sm px-3 py-2 rounded-sm max-w-[90%]" style={{ background: m.role === "assistant" ? "#2A2038" : "#211E2C", marginLeft: m.role === "customer" ? "auto" : 0 }}>{m.text}</div>
+                <div key={i} className="text-sm px-3 py-2 rounded-sm max-w-[90%]" style={{ background: m.role === "assistant" ? "#F3E8FF" : "#F0EBE0", marginLeft: m.role === "customer" ? "auto" : 0 }}>{m.text}</div>
               ))}
             </div>
           )}
           <div className="flex gap-2">
             <input value={answerDraft} onChange={(e) => setAnswerDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendReply()}
-              placeholder="Send a message…" className="flex-1 text-sm border rounded-sm px-2 py-1.5" style={{ borderColor: "#332C40" }} />
+              placeholder="Send a message…" className="flex-1 text-sm border rounded-sm px-2 py-1.5" style={{ borderColor: "#DDD5C4" }} />
             <button onClick={sendReply} disabled={sending} style={{ background: "#8B5CF6" }} className="text-white px-3 rounded-sm">
               {sending ? <Loader2 className="animate-spin" size={14} /> : <Send size={14} />}
             </button>
@@ -1358,21 +1358,21 @@ function CustomerView({ businessName, businessPhone, lead: initialLead, onBack }
         </div>
 
         {q && (
-          <div style={{ borderTop: "1px dashed #3D3549" }} className="pt-3 mb-3">
-            <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "#A79FB0" }}>Estimate</div>
-            <div className="tm-mono text-lg flex items-center gap-1" style={{ color: "#EDE6DA" }}><Euro size={16} />{total}</div>
+          <div style={{ borderTop: "1px dashed #E8E1D2" }} className="pt-3 mb-3">
+            <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "#5F5870" }}>Estimate</div>
+            <div className="tm-mono text-lg flex items-center gap-1" style={{ color: "#15121C" }}><Euro size={16} />{total}</div>
             {lead.status === "quoted" && !lead.booking && (
               quoteResponded ? (
                 <p className="text-xs mt-2" style={{ color: "#4FAE7D" }}>Thanks, we've let them know.</p>
               ) : (
                 <div className="mt-2">
                   <input value={preferredTime} onChange={(e) => setPreferredTime(e.target.value)}
-                    placeholder="Preferred day/time (optional)" className="w-full text-sm border rounded-sm px-2 py-1.5 mb-2" style={{ borderColor: "#332C40" }} />
+                    placeholder="Preferred day/time (optional)" className="w-full text-sm border rounded-sm px-2 py-1.5 mb-2" style={{ borderColor: "#DDD5C4" }} />
                   <div className="flex gap-2">
                     <button onClick={() => respondToQuote(true)} disabled={quoteResponding} style={{ background: "#4FAE7D" }} className="text-white text-xs font-semibold px-3 py-1.5 rounded-sm flex items-center gap-1">
                       {quoteResponding ? <Loader2 className="animate-spin" size={12} /> : null} Accept quote
                     </button>
-                    <button onClick={() => respondToQuote(false)} disabled={quoteResponding} style={{ background: "#1E1A28", border: "1px solid #332C40", color: "#E2704A" }} className="text-xs font-semibold px-3 py-1.5 rounded-sm">
+                    <button onClick={() => respondToQuote(false)} disabled={quoteResponding} style={{ background: "#FFFFFF", border: "1px solid #DDD5C4", color: "#E2704A" }} className="text-xs font-semibold px-3 py-1.5 rounded-sm">
                       Decline
                     </button>
                   </div>
@@ -1382,37 +1382,37 @@ function CustomerView({ businessName, businessPhone, lead: initialLead, onBack }
           </div>
         )}
         {lead.booking && (
-          <div style={{ borderTop: "1px dashed #3D3549" }} className="pt-3 mb-3 text-sm">
+          <div style={{ borderTop: "1px dashed #E8E1D2" }} className="pt-3 mb-3 text-sm">
             <div className="flex items-center gap-2"><Clock size={14} /> {lead.booking.date} · {lead.booking.time}</div>
           </div>
         )}
         {lead.invoice && (
-          <div style={{ borderTop: "1px dashed #3D3549" }} className="pt-3 text-sm">
+          <div style={{ borderTop: "1px dashed #E8E1D2" }} className="pt-3 text-sm">
             {lead.invoice.vatRate != null && (
-              <div className="text-xs mb-1" style={{ color: "#A79FB0" }}>
+              <div className="text-xs mb-1" style={{ color: "#5F5870" }}>
                 <div className="flex justify-between"><span>Subtotal</span><span className="tm-mono">€{lead.invoice.subtotal}</span></div>
                 <div className="flex justify-between"><span>VAT @ {lead.invoice.vatRate}%</span><span className="tm-mono">€{lead.invoice.vatAmount}</span></div>
               </div>
             )}
-            <div className="tm-mono text-lg flex items-center gap-1" style={{ color: "#EDE6DA" }}><Euro size={16} />{lead.invoice.total}</div>
-            <button onClick={() => downloadInvoicePdf(lead, businessName)} style={{ background: "#1E1A28", border: "1.5px solid #EDE6DA", color: "#EDE6DA" }} className="mt-2 mb-2 text-xs font-semibold px-3 py-1.5 rounded-sm flex items-center gap-1">
+            <div className="tm-mono text-lg flex items-center gap-1" style={{ color: "#15121C" }}><Euro size={16} />{lead.invoice.total}</div>
+            <button onClick={() => downloadInvoicePdf(lead, businessName)} style={{ background: "#FFFFFF", border: "1.5px solid #15121C", color: "#15121C" }} className="mt-2 mb-2 text-xs font-semibold px-3 py-1.5 rounded-sm flex items-center gap-1">
               <Download size={13} /> Download PDF
             </button>
             {lead.invoice.paid ? (
               <>
                 <div className="font-semibold text-xs mt-1" style={{ color: "#4FAE7D" }}>Paid, thank you</div>
                 {reviewSubmitted ? (
-                  <p className="text-xs mt-3" style={{ color: "#A79FB0" }}>Thanks for your review!</p>
+                  <p className="text-xs mt-3" style={{ color: "#5F5870" }}>Thanks for your review!</p>
                 ) : (
-                  <div style={{ borderTop: "1px dashed #3D3549" }} className="pt-3 mt-3">
-                    <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#A79FB0" }}>How was the job?</div>
+                  <div style={{ borderTop: "1px dashed #E8E1D2" }} className="pt-3 mt-3">
+                    <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5F5870" }}>How was the job?</div>
                     <div className="flex gap-1 mb-2">
                       {[1, 2, 3, 4, 5].map((n) => (
-                        <button key={n} onClick={() => setReviewRating(n)} style={{ color: n <= reviewRating ? "#8B5CF6" : "#332C40", fontSize: 22, lineHeight: 1 }}>★</button>
+                        <button key={n} onClick={() => setReviewRating(n)} style={{ color: n <= reviewRating ? "#8B5CF6" : "#DDD5C4", fontSize: 22, lineHeight: 1 }}>★</button>
                       ))}
                     </div>
                     <textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} rows={2} className="tm-input" placeholder="Optional comment about the work…" />
-                    <button onClick={submitReview} disabled={reviewRating < 1 || reviewSaving} style={{ background: reviewRating >= 1 ? "#8B5CF6" : "#3D3549" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm mt-2 flex items-center gap-2">
+                    <button onClick={submitReview} disabled={reviewRating < 1 || reviewSaving} style={{ background: reviewRating >= 1 ? "#8B5CF6" : "#E8E1D2" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm mt-2 flex items-center gap-2">
                       {reviewSaving ? <Loader2 className="animate-spin" size={14} /> : null} Submit review
                     </button>
                   </div>
@@ -1444,7 +1444,7 @@ function PaymentsBanner({ business, connecting, onConnect, connectError }) {
 
   if (connected) {
     return (
-      <div style={{ background: "#1A2B22", border: "1px solid #2E4A3A" }} className="rounded-sm px-3 py-2 mb-3 text-xs flex items-center justify-between gap-2">
+      <div style={{ background: "#E7F5EC", border: "1px solid #b7e0c6" }} className="rounded-sm px-3 py-2 mb-3 text-xs flex items-center justify-between gap-2">
         <span style={{ color: "#4FAE7D" }} className="font-semibold flex items-center gap-1"><CheckCircle2 size={13} /> Stripe connected, payments go straight to your account</span>
         <span style={{ color: "#4FAE7D" }}>{inTrial ? `Free until ${trialEndLabel}` : "5% platform fee applies"}</span>
       </div>
@@ -1454,8 +1454,8 @@ function PaymentsBanner({ business, connecting, onConnect, connectError }) {
   const mandatoryLabel = STRIPE_MANDATORY_DATE.toLocaleDateString("en-IE", { day: "numeric", month: "long" });
 
   return (
-    <div style={{ background: "#2A2038", border: "1px solid #3A2A4A" }} className="rounded-sm px-3 py-2.5 mb-3 text-xs">
-      <span style={{ color: "#E0B080" }}>
+    <div style={{ background: "#F3E8FF", border: "1px solid #E0C8F5" }} className="rounded-sm px-3 py-2.5 mb-3 text-xs">
+      <span style={{ color: "#6B4423" }}>
         Free for everyone until {trialEndLabel}. From {mandatoryLabel}, connecting Stripe will be mandatory to keep using TradePlaza, we'll let you know here as soon as that's ready to set up.
       </span>
     </div>
@@ -1545,7 +1545,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
     <div>
       <div style={{ background: "#5B3A87" }} className="text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Logo size={44} badgeSize={32} />
+          <Logo size={64} badgeSize={32} />
           <div>
             <div className="tm-display text-sm tracking-tight leading-none flex items-center gap-1.5">{business.name.toUpperCase()}{business.verification_status === "verified" && <VerifiedBadge />}</div>
             <div className="text-[10px] tracking-[0.2em] text-white/60 leading-none mt-1">TRADEPLAZA WORKSPACE</div>
@@ -1558,7 +1558,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
         </div>
       </div>
 
-      <div className="flex border-b" style={{ borderColor: "#332C40", background: "#1E1A28" }}>
+      <div className="flex border-b" style={{ borderColor: "#DDD5C4", background: "#FFFFFF" }}>
         {[
           { id: "inbox", label: "Inbox", icon: MessageCircle },
           { id: "calendar", label: "Calendar", icon: CalendarIcon },
@@ -1568,7 +1568,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
           const Icon = t.icon; const active = tab === t.id;
           return (
             <button key={t.id} onClick={() => { setTab(t.id); setSelectedId(null); }} className="flex-1 flex flex-col items-center gap-1 py-2 text-[11px] font-semibold uppercase tracking-wide"
-              style={{ color: active ? "#EDE6DA" : "#7A7286", borderBottom: active ? `3px solid ${theme}` : "3px solid transparent" }}>
+              style={{ color: active ? "#15121C" : "#7D7688", borderBottom: active ? `3px solid ${theme}` : "3px solid transparent" }}>
               <Icon size={16} strokeWidth={active ? 2.6 : 2} />{t.label}
             </button>
           );
@@ -1576,7 +1576,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
       </div>
 
       <div className="p-3 max-w-5xl mx-auto">
-        {!loaded && <div className="flex items-center justify-center py-16 text-sm" style={{ color: "#A79FB0" }}><Loader2 className="animate-spin mr-2" size={16} /> Loading your jobs…</div>}
+        {!loaded && <div className="flex items-center justify-center py-16 text-sm" style={{ color: "#5F5870" }}><Loader2 className="animate-spin mr-2" size={16} /> Loading your jobs…</div>}
         {loaded && tab === "inbox" && !selected && <PaymentsBanner business={business} connecting={connecting} onConnect={connectStripe} connectError={connectError} />}
         {loaded && tab === "inbox" && !selected && <StatsBar leads={leads} theme={theme} />}
         {loaded && tab === "inbox" && !selected && <Inbox leads={leads} onSelect={setSelectedId} onNew={() => setShowNewLead(true)} />}
@@ -1594,7 +1594,7 @@ function ProDashboard({ business, onLogout, onBusinessUpdate }) {
 
 function VerifiedBadge() {
   return (
-    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-sm" style={{ background: "#1A2B22", color: "#4FAE7D" }}>
+    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-sm" style={{ background: "#E7F5EC", color: "#4FAE7D" }}>
       <CheckCircle2 size={11} /> Verified
     </span>
   );
@@ -1670,15 +1670,15 @@ function ProfileModal({ business, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div style={{ background: "#15121C" }} className="w-full sm:max-w-md rounded-t-lg sm:rounded-sm max-h-[90vh] overflow-y-auto">
+      <div style={{ background: "#EDE6DA" }} className="w-full sm:max-w-md rounded-t-lg sm:rounded-sm max-h-[90vh] overflow-y-auto">
         <div style={{ background: "#5B3A87" }} className="text-white px-4 py-3 flex items-center justify-between">
           <div className="tm-display text-sm">PUBLIC PROFILE</div>
           <button onClick={onClose}><X size={18} /></button>
         </div>
         <div className="p-4 space-y-3">
-          <p className="text-xs" style={{ color: "#7A7286" }}>This is what customers browsing nearby see about you.</p>
+          <p className="text-xs" style={{ color: "#7D7688" }}>This is what customers browsing nearby see about you.</p>
           <Field label="Based near">
-            <p className="text-xs mt-1 mb-1" style={{ color: "#A79FB0" }}>Currently: {business.area || "not set"}</p>
+            <p className="text-xs mt-1 mb-1" style={{ color: "#5F5870" }}>Currently: {business.area || "not set"}</p>
             <AddressLookup initialLabel={business.area} onResolved={setLocation} />
           </Field>
           <Field label="Services offered">
@@ -1693,18 +1693,18 @@ function ProfileModal({ business, onClose, onSave }) {
               {swatches.map((c) => (
                 <button key={c} type="button" onClick={() => setThemeColor(c)}
                   className="w-8 h-8 rounded-full"
-                  style={{ background: c, border: themeColor === c ? "3px solid #EDE6DA" : "1px solid #332C40" }} />
+                  style={{ background: c, border: themeColor === c ? "3px solid #15121C" : "1px solid #DDD5C4" }} />
               ))}
-              <input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="w-8 h-8 rounded-full cursor-pointer" style={{ border: "1px solid #332C40" }} />
+              <input type="color" value={themeColor} onChange={(e) => setThemeColor(e.target.value)} className="w-8 h-8 rounded-full cursor-pointer" style={{ border: "1px solid #DDD5C4" }} />
             </div>
-            <p className="text-[11px] mt-1" style={{ color: "#7A7286" }}>Colors your dashboard and your card in the public directory.</p>
+            <p className="text-[11px] mt-1" style={{ color: "#7D7688" }}>Colors your dashboard and your card in the public directory.</p>
           </Field>
           <Field label="Phone for SMS alerts (optional)">
             <input value={notifyPhone} onChange={(e) => setNotifyPhone(e.target.value)} className="tm-input" placeholder="087 123 4567" />
-            <p className="text-[11px] mt-1" style={{ color: "#7A7286" }}>You'll always get email alerts at your login email. Add a phone here for SMS too.</p>
+            <p className="text-[11px] mt-1" style={{ color: "#7D7688" }}>You'll always get email alerts at your login email. Add a phone here for SMS too.</p>
           </Field>
 
-          <div style={{ borderTop: "1px dashed #3D3549" }} className="pt-3">
+          <div style={{ borderTop: "1px dashed #E8E1D2" }} className="pt-3">
             <Field label="VAT">
               <label className="flex items-center gap-2 text-sm mt-1">
                 <input type="checkbox" checked={vatRegistered} onChange={(e) => setVatRegistered(e.target.checked)} />
@@ -1714,29 +1714,29 @@ function ProfileModal({ business, onClose, onSave }) {
                 <div className="mt-2 space-y-2">
                   <input value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} className="tm-input !mt-0" placeholder="VAT number, e.g. IE1234567T" />
                   <div className="flex items-center gap-2">
-                    <span className="text-xs" style={{ color: "#A79FB0" }}>Rate:</span>
+                    <span className="text-xs" style={{ color: "#5F5870" }}>Rate:</span>
                     <input type="number" value={vatRate} onChange={(e) => setVatRate(Number(e.target.value))} className="tm-input !mt-0 w-20" />
-                    <span className="text-xs" style={{ color: "#A79FB0" }}>%</span>
+                    <span className="text-xs" style={{ color: "#5F5870" }}>%</span>
                   </div>
-                  <p className="text-[11px]" style={{ color: "#7A7286" }}>23% is the current Irish standard rate, adjust if a different rate applies to your trade.</p>
+                  <p className="text-[11px]" style={{ color: "#7D7688" }}>23% is the current Irish standard rate, adjust if a different rate applies to your trade.</p>
                 </div>
               )}
             </Field>
           </div>
 
-          <div style={{ borderTop: "1px dashed #3D3549" }} className="pt-3">
+          <div style={{ borderTop: "1px dashed #E8E1D2" }} className="pt-3">
             <Field label="Verification (licensing & insurance)">
               {business.verification_status === "verified" && <div className="mt-1 mb-2"><VerifiedBadge /></div>}
-              {business.verification_status === "pending" && <p className="text-xs mt-1 mb-2" style={{ color: "#A79FB0" }}>Submitted, awaiting review.</p>}
+              {business.verification_status === "pending" && <p className="text-xs mt-1 mb-2" style={{ color: "#5F5870" }}>Submitted, awaiting review.</p>}
               {business.verification_status === "rejected" && (
                 <p className="text-xs mt-1 mb-2" style={{ color: "#E2704A" }}>Not approved{business.verification_notes ? `: ${business.verification_notes}` : "."} You can resubmit below.</p>
               )}
-              <p className="text-[11px] mb-2" style={{ color: "#7A7286" }}>Verified businesses show a badge to customers. Submitting sends this for manual review.</p>
+              <p className="text-[11px] mb-2" style={{ color: "#7D7688" }}>Verified businesses show a badge to customers. Submitting sends this for manual review.</p>
               <input value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} className="tm-input" placeholder="Trade license / registration number" />
               <input value={insuranceProvider} onChange={(e) => setInsuranceProvider(e.target.value)} className="tm-input" placeholder="Public liability insurance provider" />
-              <label className="text-[11px] mt-2 block" style={{ color: "#7A7286" }}>Insurance expiry date</label>
+              <label className="text-[11px] mt-2 block" style={{ color: "#7D7688" }}>Insurance expiry date</label>
               <input type="date" value={insuranceExpiry} onChange={(e) => setInsuranceExpiry(e.target.value)} className="tm-input" />
-              <label className="text-[11px] mt-2 block" style={{ color: "#7A7286" }}>Upload license or insurance certificate (photo or PDF)</label>
+              <label className="text-[11px] mt-2 block" style={{ color: "#7D7688" }}>Upload license or insurance certificate (photo or PDF)</label>
               <input type="file" accept="image/*,application/pdf" onChange={(e) => setVerificationFile(e.target.files[0] || null)} className="text-xs mt-1" />
               {verificationMsg && <p className="text-xs mt-1" style={{ color: verificationMsg.ok ? "#4FAE7D" : "#E2704A" }}>{verificationMsg.text}</p>}
               <button onClick={submitVerification} disabled={submittingVerification} style={{ background: "#5B3A87" }} className="text-white text-xs font-semibold px-3 py-2 rounded-sm mt-2 flex items-center gap-2">
@@ -1745,9 +1745,9 @@ function ProfileModal({ business, onClose, onSave }) {
             </Field>
           </div>
 
-          <div style={{ borderTop: "1px dashed #3D3549" }} className="pt-3">
+          <div style={{ borderTop: "1px dashed #E8E1D2" }} className="pt-3">
             <Field label="Add a team member">
-              <p className="text-[11px] mt-1 mb-1" style={{ color: "#7A7286" }}>They need a TradePlaza account already (any email that's signed up before), this gives them full access to your jobs.</p>
+              <p className="text-[11px] mt-1 mb-1" style={{ color: "#7D7688" }}>They need a TradePlaza account already (any email that's signed up before), this gives them full access to your jobs.</p>
               <div className="flex gap-2">
                 <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} type="email" className="tm-input !mt-0 flex-1" placeholder="teammate@email.com" />
                 <button onClick={inviteTeammate} disabled={inviting} style={{ background: "#5B3A87" }} className="text-white text-xs font-semibold px-3 rounded-sm shrink-0">
@@ -1777,8 +1777,8 @@ function Inbox({ leads, onSelect, onNew }) {
   if (leads.length === 0) {
     return (
       <div className="text-center py-16 px-4">
-        <div className="tm-display text-lg mb-2" style={{ color: "#EDE6DA" }}>NO JOBS ON THE PAD YET</div>
-        <p className="text-sm mb-4" style={{ color: "#A79FB0" }}>Log your first enquiry, or set up your public profile so customers nearby can find you.</p>
+        <div className="tm-display text-lg mb-2" style={{ color: "#15121C" }}>NO JOBS ON THE PAD YET</div>
+        <p className="text-sm mb-4" style={{ color: "#5F5870" }}>Log your first enquiry, or set up your public profile so customers nearby can find you.</p>
         <button onClick={onNew} style={{ background: "#8B5CF6" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm">+ New enquiry</button>
       </div>
     );
@@ -1788,22 +1788,22 @@ function Inbox({ leads, onSelect, onNew }) {
       <div className="grid gap-3 sm:grid-cols-2">
         {visible.map((lead) => (
         <button key={lead.id} onClick={() => onSelect(lead.id)} className="text-left">
-          <div style={{ background: "#1E1A28", border: "1px solid #332C40", opacity: lead.status === "declined" ? 0.6 : 1 }} className="rounded-sm shadow-sm px-4 py-3 pt-4 relative hover:shadow-md transition">
+          <div style={{ background: "#FFFFFF", border: "1px solid #DDD5C4", opacity: lead.status === "declined" ? 0.6 : 1 }} className="rounded-sm shadow-sm px-4 py-3 pt-4 relative hover:shadow-md transition">
             <PerforatedTop />
             <div className="flex items-start justify-between mb-1">
-              <div className="tm-mono text-xs" style={{ color: "#A79FB0" }}>{lead.job_no}</div>
+              <div className="tm-mono text-xs" style={{ color: "#5F5870" }}>{lead.job_no}</div>
               <Stamp status={lead.status} />
             </div>
             <div className="font-semibold text-sm mb-0.5">{lead.name}</div>
-            <div className="text-xs mb-2 flex items-center gap-1" style={{ color: "#A79FB0" }}><MapPin size={11} /> {lead.address}</div>
+            <div className="text-xs mb-2 flex items-center gap-1" style={{ color: "#5F5870" }}><MapPin size={11} /> {lead.address}</div>
             <p className="text-sm mb-2 line-clamp-2">{lead.problem}</p>
-            <div className="flex items-center justify-between"><ChannelBadge channel={lead.channel} /><ChevronRight size={16} color="#A79FB0" /></div>
+            <div className="flex items-center justify-between"><ChannelBadge channel={lead.channel} /><ChevronRight size={16} color="#5F5870" /></div>
           </div>
         </button>
         ))}
       </div>
       {declined.length > 0 && (
-        <button onClick={() => setShowDeclined((s) => !s)} className="text-xs mt-3" style={{ color: "#7A7286" }}>
+        <button onClick={() => setShowDeclined((s) => !s)} className="text-xs mt-3" style={{ color: "#7D7688" }}>
           {showDeclined ? "Hide declined" : `Show declined (${declined.length})`}
         </button>
       )}
@@ -1835,26 +1835,26 @@ function NewLeadModal({ onClose, onCreate }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div style={{ background: "#15121C" }} className="w-full sm:max-w-md rounded-t-lg sm:rounded-sm max-h-[90vh] overflow-y-auto">
+      <div style={{ background: "#EDE6DA" }} className="w-full sm:max-w-md rounded-t-lg sm:rounded-sm max-h-[90vh] overflow-y-auto">
         <div style={{ background: "#5B3A87" }} className="text-white px-4 py-3 flex items-center justify-between">
           <div className="tm-display text-sm">NEW ENQUIRY</div>
           <button onClick={onClose}><X size={18} /></button>
         </div>
         <div className="p-4 space-y-3">
           <div>
-            <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#A79FB0" }}>Came in via</label>
+            <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#5F5870" }}>Came in via</label>
             <div className="flex gap-2 mt-1">
               {CHANNELS.map((c) => {
                 const Icon = c.icon; const active = form.channel === c.id;
                 return (
                   <button key={c.id} onClick={() => set("channel", c.id)} className="flex-1 flex flex-col items-center gap-1 py-2 rounded-sm text-xs font-medium"
-                    style={{ border: `1.5px solid ${active ? "#8B5CF6" : "#332C40"}`, background: active ? "#2A2038" : "white", color: active ? "#8B5CF6" : "#A79FB0" }}>
+                    style={{ border: `1.5px solid ${active ? "#8B5CF6" : "#DDD5C4"}`, background: active ? "#F3E8FF" : "white", color: active ? "#8B5CF6" : "#5F5870" }}>
                     <Icon size={16} /> {c.label}
                   </button>
                 );
               })}
             </div>
-            <p className="text-[11px] mt-1" style={{ color: "#7A7286" }}>WhatsApp/SMS shown here as a log of the enquiry. Auto-capturing real messages needs Twilio wired into the backend.</p>
+            <p className="text-[11px] mt-1" style={{ color: "#7D7688" }}>WhatsApp/SMS shown here as a log of the enquiry. Auto-capturing real messages needs Twilio wired into the backend.</p>
           </div>
           <Field label="Customer name"><input value={form.name} onChange={(e) => set("name", e.target.value)} className="tm-input" placeholder="Sarah Byrne" /></Field>
           <Field label="Phone"><input value={form.phone} onChange={(e) => set("phone", e.target.value)} className="tm-input" placeholder="087 123 4567" /></Field>
@@ -1862,7 +1862,7 @@ function NewLeadModal({ onClose, onCreate }) {
           <Field label="What's the problem?"><textarea value={form.problem} onChange={(e) => set("problem", e.target.value)} rows={3} className="tm-input" placeholder="Boiler isn't firing up, no hot water since this morning" /></Field>
           <PhotoPicker files={photos} onChange={setPhotos} />
           {error && <p className="text-xs" style={{ color: "#E2704A" }}>{error}</p>}
-          <button disabled={!canSubmit || saving} onClick={submit} style={{ background: canSubmit ? "#8B5CF6" : "#3D3549" }} className="w-full text-white font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2">
+          <button disabled={!canSubmit || saving} onClick={submit} style={{ background: canSubmit ? "#8B5CF6" : "#E8E1D2" }} className="w-full text-white font-semibold py-2.5 rounded-sm flex items-center justify-center gap-2">
             {saving ? <Loader2 className="animate-spin" size={16} /> : <Plus size={16} />} Log enquiry
           </button>
         </div>
@@ -1975,13 +1975,13 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
   };
 
   return (
-    <div style={{ background: "#1E1A28", border: "1px solid #332C40" }} className="rounded-sm overflow-hidden">
-      <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid #332C40" }}>
-        <button onClick={onBack}><ArrowLeft size={18} color="#A79FB0" /></button>
-        <div className="tm-mono text-xs" style={{ color: "#A79FB0" }}>{lead.job_no}</div>
+    <div style={{ background: "#FFFFFF", border: "1px solid #DDD5C4" }} className="rounded-sm overflow-hidden">
+      <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: "1px solid #DDD5C4" }}>
+        <button onClick={onBack}><ArrowLeft size={18} color="#5F5870" /></button>
+        <div className="tm-mono text-xs" style={{ color: "#5F5870" }}>{lead.job_no}</div>
         <div className="ml-auto flex items-center gap-2">
           {!["invoiced", "paid", "declined"].includes(lead.status) && (
-            <button onClick={declineLead} className="text-xs" style={{ color: "#7A7286" }}>Decline</button>
+            <button onClick={declineLead} className="text-xs" style={{ color: "#7D7688" }}>Decline</button>
           )}
           <Stamp status={lead.status} />
         </div>
@@ -1989,21 +1989,21 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
       <div className="p-4 space-y-4">
         <div>
           <div className="font-semibold">{lead.name} · {lead.phone}</div>
-          <div className="text-sm flex items-center gap-1 mt-1" style={{ color: "#A79FB0" }}><MapPin size={12} /> {lead.address}</div>
+          <div className="text-sm flex items-center gap-1 mt-1" style={{ color: "#5F5870" }}><MapPin size={12} /> {lead.address}</div>
           <div className="mt-1"><ChannelBadge channel={lead.channel} /></div>
           <p className="mt-2 text-sm">{lead.problem}</p>
           <PhotoThumbnails photos={lead.photos} />
         </div>
 
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#A79FB0" }}>Conversation</div>
+          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5F5870" }}>Conversation</div>
           <div className="space-y-2">
             {messages.map((m, i) => (
-              <div key={i} className="text-sm px-3 py-2 rounded-sm max-w-[85%]" style={{ background: m.role === "assistant" ? "#2A2038" : m.role === "customer" ? "#211E2C" : "#15121C", marginLeft: m.role === "customer" ? "auto" : 0 }}>
-                <div className="text-[10px] uppercase font-semibold mb-0.5" style={{ color: "#7A7286" }}>{m.role === "assistant" ? "AI (to customer)" : m.role}</div>{m.text}
+              <div key={i} className="text-sm px-3 py-2 rounded-sm max-w-[85%]" style={{ background: m.role === "assistant" ? "#F3E8FF" : m.role === "customer" ? "#F0EBE0" : "#EDE6DA", marginLeft: m.role === "customer" ? "auto" : 0 }}>
+                <div className="text-[10px] uppercase font-semibold mb-0.5" style={{ color: "#7D7688" }}>{m.role === "assistant" ? "AI (to customer)" : m.role}</div>{m.text}
               </div>
             ))}
-            {messages.length === 0 && <p className="text-sm" style={{ color: "#7A7286" }}>No AI assessment yet, optional, you can quote and book without it below.</p>}
+            {messages.length === 0 && <p className="text-sm" style={{ color: "#7D7688" }}>No AI assessment yet, optional, you can quote and book without it below.</p>}
           </div>
           <div className="flex gap-2 mt-2">
             <button onClick={askAI} disabled={aiLoading} style={{ background: "#5B3A87" }} className="text-white text-xs font-semibold px-3 py-2 rounded-sm flex items-center gap-1">
@@ -2013,13 +2013,13 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
           </div>
           {aiError && <p className="text-xs mt-1" style={{ color: "#E2704A" }}>{aiError}</p>}
           <div className="flex gap-2 mt-2">
-            <input value={answerDraft} onChange={(e) => setAnswerDraft(e.target.value)} placeholder="Log customer's reply…" className="flex-1 text-sm border rounded-sm px-2 py-1.5" style={{ borderColor: "#332C40" }} />
-            <button onClick={sendAnswer} style={{ background: "#A79FB0" }} className="text-white px-3 rounded-sm"><Send size={14} /></button>
+            <input value={answerDraft} onChange={(e) => setAnswerDraft(e.target.value)} placeholder="Log customer's reply…" className="flex-1 text-sm border rounded-sm px-2 py-1.5" style={{ borderColor: "#DDD5C4" }} />
+            <button onClick={sendAnswer} style={{ background: "#5F5870" }} className="text-white px-3 rounded-sm"><Send size={14} /></button>
           </div>
         </div>
 
-        <div style={{ borderTop: "1px dashed #3D3549" }} className="pt-4">
-          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#A79FB0" }}>Quote</div>
+        <div style={{ borderTop: "1px dashed #E8E1D2" }} className="pt-4">
+          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5F5870" }}>Quote</div>
           {!quoteDraft ? (
             <button onClick={startManualQuote} style={{ background: "#5B3A87" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm flex items-center gap-1">
               <FileText size={14} /> Create a quote
@@ -2042,8 +2042,8 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
         </div>
 
         {!lead.booking && (
-          <div style={{ borderTop: "1px dashed #3D3549" }} className="pt-4">
-            <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#A79FB0" }}>Book the job</div>
+          <div style={{ borderTop: "1px dashed #E8E1D2" }} className="pt-4">
+            <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5F5870" }}>Book the job</div>
             {!showBookingForm ? (
               <button onClick={() => setShowBookingForm(true)} style={{ background: "#5B3A87" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm flex items-center gap-1">
                 <CalendarIcon size={14} /> Book an appointment
@@ -2051,8 +2051,8 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
             ) : (
               <>
                 <div className="flex gap-2">
-                  <input type="date" value={bookingDraft.date} onChange={(e) => setBookingDraft({ ...bookingDraft, date: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#332C40" }} />
-                  <select value={bookingDraft.time} onChange={(e) => setBookingDraft({ ...bookingDraft, time: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#332C40" }}>
+                  <input type="date" value={bookingDraft.date} onChange={(e) => setBookingDraft({ ...bookingDraft, date: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#DDD5C4" }} />
+                  <select value={bookingDraft.time} onChange={(e) => setBookingDraft({ ...bookingDraft, time: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#DDD5C4" }}>
                     <option value="">Time slot</option>
                     {["08:00–10:00","10:00–12:00","12:00–14:00","14:00–16:00","16:00–18:00"].map((t) => <option key={t}>{t}</option>)}
                   </select>
@@ -2064,53 +2064,53 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
         )}
 
         {lead.booking && lead.status !== "invoiced" && lead.status !== "paid" && (
-          <div style={{ borderTop: "1px dashed #3D3549" }} className="pt-4">
+          <div style={{ borderTop: "1px dashed #E8E1D2" }} className="pt-4">
             <div className="text-sm flex items-center gap-2 mb-2"><Clock size={14} /> {lead.booking.date} · {lead.booking.time}</div>
             {!rescheduling ? (
               <div className="flex gap-2 mb-3">
-                <button onClick={() => { setBookingDraft(lead.booking); setRescheduling(true); }} className="text-xs font-semibold px-3 py-1.5 rounded-sm" style={{ background: "#1E1A28", border: "1px solid #332C40", color: "#A79FB0" }}>Reschedule</button>
-                <button onClick={cancelBooking} className="text-xs font-semibold px-3 py-1.5 rounded-sm" style={{ background: "#1E1A28", border: "1px solid #332C40", color: "#E2704A" }}>Cancel booking</button>
+                <button onClick={() => { setBookingDraft(lead.booking); setRescheduling(true); }} className="text-xs font-semibold px-3 py-1.5 rounded-sm" style={{ background: "#FFFFFF", border: "1px solid #DDD5C4", color: "#5F5870" }}>Reschedule</button>
+                <button onClick={cancelBooking} className="text-xs font-semibold px-3 py-1.5 rounded-sm" style={{ background: "#FFFFFF", border: "1px solid #DDD5C4", color: "#E2704A" }}>Cancel booking</button>
               </div>
             ) : (
               <div className="mb-3">
                 <div className="flex gap-2">
-                  <input type="date" value={bookingDraft.date} onChange={(e) => setBookingDraft({ ...bookingDraft, date: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#332C40" }} />
-                  <select value={bookingDraft.time} onChange={(e) => setBookingDraft({ ...bookingDraft, time: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#332C40" }}>
+                  <input type="date" value={bookingDraft.date} onChange={(e) => setBookingDraft({ ...bookingDraft, date: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#DDD5C4" }} />
+                  <select value={bookingDraft.time} onChange={(e) => setBookingDraft({ ...bookingDraft, time: e.target.value })} className="border rounded-sm px-2 py-1.5 text-sm" style={{ borderColor: "#DDD5C4" }}>
                     {["08:00–10:00","10:00–12:00","12:00–14:00","14:00–16:00","16:00–18:00"].map((t) => <option key={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="flex gap-2 mt-2">
                   <button onClick={saveReschedule} style={{ background: "#5B3A87" }} className="text-white text-xs font-semibold px-3 py-1.5 rounded-sm">Save new time</button>
-                  <button onClick={() => setRescheduling(false)} className="text-xs" style={{ color: "#7A7286" }}>Cancel</button>
+                  <button onClick={() => setRescheduling(false)} className="text-xs" style={{ color: "#7D7688" }}>Cancel</button>
                 </div>
               </div>
             )}
             {quoteDraft ? (
               <button onClick={markComplete} style={{ background: "#8B5CF6" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm flex items-center gap-1"><CheckCircle2 size={14} /> Mark job complete & invoice</button>
             ) : (
-              <p className="text-xs" style={{ color: "#7A7286" }}>Add a quote above before invoicing this job.</p>
+              <p className="text-xs" style={{ color: "#7D7688" }}>Add a quote above before invoicing this job.</p>
             )}
           </div>
         )}
 
         {(lead.status === "invoiced" || lead.status === "paid") && lead.invoice && (
-          <div style={{ borderTop: "1px dashed #3D3549" }} className="pt-4">
-            <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#A79FB0" }}>Invoice</div>
+          <div style={{ borderTop: "1px dashed #E8E1D2" }} className="pt-4">
+            <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5F5870" }}>Invoice</div>
             {lead.invoice.vatRate != null ? (
-              <div className="text-sm mb-1" style={{ color: "#A79FB0" }}>
+              <div className="text-sm mb-1" style={{ color: "#5F5870" }}>
                 <div className="flex justify-between"><span>Subtotal</span><span className="tm-mono">€{lead.invoice.subtotal}</span></div>
                 <div className="flex justify-between"><span>VAT @ {lead.invoice.vatRate}%</span><span className="tm-mono">€{lead.invoice.vatAmount}</span></div>
               </div>
             ) : null}
-            <div className="tm-mono text-2xl flex items-center gap-1" style={{ color: "#EDE6DA" }}><Euro size={20} />{lead.invoice.total}</div>
-            <div className="text-xs mt-1" style={{ color: "#A79FB0" }}>Issued {new Date(lead.invoice.issuedAt).toLocaleDateString("en-IE")}</div>
-            <button onClick={() => downloadInvoicePdf(lead, businessName)} style={{ background: "#1E1A28", border: "1.5px solid #EDE6DA", color: "#EDE6DA" }} className="mt-2 text-sm font-semibold px-4 py-2 rounded-sm flex items-center gap-1">
+            <div className="tm-mono text-2xl flex items-center gap-1" style={{ color: "#15121C" }}><Euro size={20} />{lead.invoice.total}</div>
+            <div className="text-xs mt-1" style={{ color: "#5F5870" }}>Issued {new Date(lead.invoice.issuedAt).toLocaleDateString("en-IE")}</div>
+            <button onClick={() => downloadInvoicePdf(lead, businessName)} style={{ background: "#FFFFFF", border: "1.5px solid #15121C", color: "#15121C" }} className="mt-2 text-sm font-semibold px-4 py-2 rounded-sm flex items-center gap-1">
               <Download size={14} /> Download PDF
             </button>
             {lead.status === "invoiced" ? (
               <div className="mt-3">
                 <button onClick={markPaid} style={{ background: "#4FAE7D" }} className="text-white text-sm font-semibold px-4 py-2 rounded-sm">Mark as paid (cash / bank transfer)</button>
-                <p className="text-[11px] mt-1" style={{ color: "#7A7286" }}>Card payments made through the customer's status page confirm automatically, no need to click this for those.</p>
+                <p className="text-[11px] mt-1" style={{ color: "#7D7688" }}>Card payments made through the customer's status page confirm automatically, no need to click this for those.</p>
               </div>
             ) : (
               <div className="mt-2 text-sm font-semibold" style={{ color: "#4FAE7D" }}>Paid {new Date(lead.invoice.paidAt).toLocaleDateString("en-IE")}</div>
@@ -2124,9 +2124,9 @@ function LeadDetail({ lead, business, onBack, onPatch }) {
 function MoneyField({ label, value, onChange, disabled }) {
   return (
     <div>
-      <label className="text-[11px]" style={{ color: "#7A7286" }}>{label}</label>
-      <div className="flex items-center border rounded-sm px-2" style={{ borderColor: "#332C40", background: disabled ? "#15121C" : "white" }}>
-        <Euro size={12} color="#7A7286" />
+      <label className="text-[11px]" style={{ color: "#7D7688" }}>{label}</label>
+      <div className="flex items-center border rounded-sm px-2" style={{ borderColor: "#DDD5C4", background: disabled ? "#EDE6DA" : "white" }}>
+        <Euro size={12} color="#7D7688" />
         <input type="number" disabled={disabled} value={value ?? ""} onChange={(e) => onChange(Number(e.target.value))} className="tm-mono w-full py-1 px-1 text-sm bg-transparent outline-none" />
       </div>
     </div>
@@ -2174,19 +2174,19 @@ function CalendarView({ leads }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <div className="flex rounded-sm overflow-hidden border" style={{ borderColor: "#332C40" }}>
+        <div className="flex rounded-sm overflow-hidden border" style={{ borderColor: "#DDD5C4" }}>
           {["month", "week"].map((v) => (
             <button key={v} onClick={() => { setViewMode(v); setSelectedDate(null); }}
               className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide"
-              style={{ background: viewMode === v ? "#5B3A87" : "#1E1A28", color: viewMode === v ? "white" : "#A79FB0" }}>
+              style={{ background: viewMode === v ? "#5B3A87" : "#FFFFFF", color: viewMode === v ? "white" : "#5F5870" }}>
               {v}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => shift(-1)} className="p-1.5 rounded-sm" style={{ background: "#1E1A28", border: "1px solid #332C40" }}><ChevronLeft size={14} color="#A79FB0" /></button>
-          <div className="tm-display text-sm px-1 min-w-[130px] text-center" style={{ color: "#EDE6DA" }}>{headerLabel}</div>
-          <button onClick={() => shift(1)} className="p-1.5 rounded-sm" style={{ background: "#1E1A28", border: "1px solid #332C40" }}><ChevronRight size={14} color="#A79FB0" /></button>
+          <button onClick={() => shift(-1)} className="p-1.5 rounded-sm" style={{ background: "#FFFFFF", border: "1px solid #DDD5C4" }}><ChevronLeft size={14} color="#5F5870" /></button>
+          <div className="tm-display text-sm px-1 min-w-[130px] text-center" style={{ color: "#15121C" }}>{headerLabel}</div>
+          <button onClick={() => shift(1)} className="p-1.5 rounded-sm" style={{ background: "#FFFFFF", border: "1px solid #DDD5C4" }}><ChevronRight size={14} color="#5F5870" /></button>
         </div>
         <button onClick={goToday} className="text-xs font-semibold px-2 py-1" style={{ color: "#8B5CF6" }}>Today</button>
       </div>
@@ -2199,7 +2199,7 @@ function CalendarView({ leads }) {
 
       {viewMode === "month" && selectedDate && (
         <div className="mt-4">
-          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#A79FB0" }}>
+          <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "#5F5870" }}>
             {new Date(selectedDate).toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "long" })}
           </div>
           <DayJobList jobs={(byDate[selectedDate] || []).sort((a, b) => a.booking.time.localeCompare(b.booking.time))} />
@@ -2214,13 +2214,13 @@ function MonthGrid({ anchorDate, byDate, selectedDate, onSelect }) {
   const gridStart = startOfWeekMonday(firstOfMonth);
   const today = isoDate(new Date());
   const days = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
-  const dots = ["#8B5CF6", "#EDE6DA", "#A79FB0"];
+  const dots = ["#8B5CF6", "#15121C", "#5F5870"];
 
   return (
-    <div style={{ background: "#1E1A28", border: "1px solid #332C40" }} className="rounded-sm overflow-hidden">
-      <div className="grid grid-cols-7" style={{ background: "#1E1A28" }}>
+    <div style={{ background: "#FFFFFF", border: "1px solid #DDD5C4" }} className="rounded-sm overflow-hidden">
+      <div className="grid grid-cols-7" style={{ background: "#FFFFFF" }}>
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-          <div key={d} className="text-center text-[10px] font-semibold uppercase py-1.5" style={{ color: "#7A7286" }}>{d}</div>
+          <div key={d} className="text-center text-[10px] font-semibold uppercase py-1.5" style={{ color: "#7D7688" }}>{d}</div>
         ))}
       </div>
       <div className="grid grid-cols-7">
@@ -2234,12 +2234,12 @@ function MonthGrid({ anchorDate, byDate, selectedDate, onSelect }) {
             <button key={i} onClick={() => onSelect(jobs.length ? iso : null)}
               className="aspect-square flex flex-col items-center justify-start pt-1.5 relative"
               style={{
-                background: isSelected ? "#2A2038" : "white",
-                borderTop: "1px solid #332C40", borderLeft: i % 7 !== 0 ? "1px solid #332C40" : "none",
+                background: isSelected ? "#F3E8FF" : "white",
+                borderTop: "1px solid #DDD5C4", borderLeft: i % 7 !== 0 ? "1px solid #DDD5C4" : "none",
                 opacity: inMonth ? 1 : 0.35,
               }}>
               <div className="text-xs tm-mono" style={{
-                color: isToday ? "white" : "#EDE6DA",
+                color: isToday ? "white" : "#15121C",
                 background: isToday ? "#8B5CF6" : "transparent",
                 width: 18, height: 18, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
               }}>{day.getDate()}</div>
@@ -2269,13 +2269,13 @@ function WeekList({ anchorDate, byDate }) {
         return (
           <div key={iso}>
             <div className="flex items-center gap-2 mb-1.5">
-              <div className="tm-display text-sm" style={{ color: isToday ? "#8B5CF6" : "#EDE6DA" }}>
+              <div className="tm-display text-sm" style={{ color: isToday ? "#8B5CF6" : "#15121C" }}>
                 {day.toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short" })}
               </div>
               {isToday && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm" style={{ background: "#8B5CF6", color: "white" }}>TODAY</span>}
             </div>
             {jobs.length === 0 ? (
-              <div className="text-xs pl-1" style={{ color: "#7A7286" }}>No jobs booked</div>
+              <div className="text-xs pl-1" style={{ color: "#7D7688" }}>No jobs booked</div>
             ) : (
               <DayJobList jobs={jobs} />
             )}
@@ -2306,9 +2306,9 @@ function StatsBar({ leads, theme }) {
   return (
     <div className="grid grid-cols-3 gap-2 mb-3">
       {stats.map((s) => (
-        <div key={s.label} style={{ background: "#1E1A28", border: "1px solid #332C40", borderTop: `3px solid ${theme}` }} className="rounded-sm px-3 py-2">
-          <div className="tm-mono text-lg" style={{ color: "#EDE6DA" }}>{s.value}</div>
-          <div className="text-[10px] uppercase tracking-wide" style={{ color: "#7A7286" }}>{s.label}</div>
+        <div key={s.label} style={{ background: "#FFFFFF", border: "1px solid #DDD5C4", borderTop: `3px solid ${theme}` }} className="rounded-sm px-3 py-2">
+          <div className="tm-mono text-lg" style={{ color: "#15121C" }}>{s.value}</div>
+          <div className="text-[10px] uppercase tracking-wide" style={{ color: "#7D7688" }}>{s.label}</div>
         </div>
       ))}
     </div>
@@ -2319,10 +2319,10 @@ function DayJobList({ jobs }) {
   return (
     <div className="space-y-2">
       {jobs.map((l) => (
-        <div key={l.id} style={{ background: "#1E1A28", border: "1px solid #332C40" }} className="rounded-sm px-3 py-2 flex items-center justify-between">
+        <div key={l.id} style={{ background: "#FFFFFF", border: "1px solid #DDD5C4" }} className="rounded-sm px-3 py-2 flex items-center justify-between">
           <div>
             <div className="text-sm font-semibold">{l.booking.time} · {l.name}</div>
-            <div className="text-xs flex items-center gap-1" style={{ color: "#A79FB0" }}><MapPin size={11} />{l.address}</div>
+            <div className="text-xs flex items-center gap-1" style={{ color: "#5F5870" }}><MapPin size={11} />{l.address}</div>
           </div>
           <Stamp status={l.status} />
         </div>
@@ -2333,15 +2333,15 @@ function DayJobList({ jobs }) {
 
 function QuoteList({ leads, onOpen }) {
   const quoted = leads.filter((l) => l.quote);
-  if (quoted.length === 0) return <div className="text-center py-16 text-sm" style={{ color: "#A79FB0" }}>No quotes yet.</div>;
+  if (quoted.length === 0) return <div className="text-center py-16 text-sm" style={{ color: "#5F5870" }}>No quotes yet.</div>;
   return (
     <div className="space-y-2">
       {quoted.map((l) => {
         const total = (l.quote.labour || 0) + (l.quote.callout || 0) + Math.round(((l.quote.partsMin || 0) + (l.quote.partsMax || 0)) / 2);
         return (
           <button key={l.id} onClick={() => onOpen(l.id)} className="w-full text-left">
-            <div style={{ background: "#1E1A28", border: "1px solid #332C40" }} className="rounded-sm px-4 py-3 flex items-center justify-between">
-              <div><div className="tm-mono text-xs" style={{ color: "#A79FB0" }}>{l.job_no}</div><div className="text-sm font-semibold">{l.name}</div></div>
+            <div style={{ background: "#FFFFFF", border: "1px solid #DDD5C4" }} className="rounded-sm px-4 py-3 flex items-center justify-between">
+              <div><div className="tm-mono text-xs" style={{ color: "#5F5870" }}>{l.job_no}</div><div className="text-sm font-semibold">{l.name}</div></div>
               <div className="text-right"><div className="tm-mono text-sm">~€{total}</div><Stamp status={l.status} /></div>
             </div>
           </button>
@@ -2352,16 +2352,16 @@ function QuoteList({ leads, onOpen }) {
 }
 function InvoiceList({ leads, onOpen }) {
   const invoiced = leads.filter((l) => l.invoice);
-  if (invoiced.length === 0) return <div className="text-center py-16 text-sm" style={{ color: "#A79FB0" }}>No invoices yet.</div>;
+  if (invoiced.length === 0) return <div className="text-center py-16 text-sm" style={{ color: "#5F5870" }}>No invoices yet.</div>;
   const outstanding = invoiced.filter((l) => !l.invoice.paid).reduce((s, l) => s + l.invoice.total, 0);
   return (
     <div>
-      {outstanding > 0 && <div style={{ background: "#2A2038", border: "1px solid #8B5CF6" }} className="rounded-sm px-3 py-2 text-sm font-semibold mb-3">€{outstanding} outstanding across {invoiced.filter((l) => !l.invoice.paid).length} invoice(s)</div>}
+      {outstanding > 0 && <div style={{ background: "#F3E8FF", border: "1px solid #8B5CF6" }} className="rounded-sm px-3 py-2 text-sm font-semibold mb-3">€{outstanding} outstanding across {invoiced.filter((l) => !l.invoice.paid).length} invoice(s)</div>}
       <div className="space-y-2">
         {invoiced.map((l) => (
           <button key={l.id} onClick={() => onOpen(l.id)} className="w-full text-left">
-            <div style={{ background: "#1E1A28", border: "1px solid #332C40" }} className="rounded-sm px-4 py-3 flex items-center justify-between">
-              <div><div className="tm-mono text-xs" style={{ color: "#A79FB0" }}>{l.job_no}</div><div className="text-sm font-semibold">{l.name}</div></div>
+            <div style={{ background: "#FFFFFF", border: "1px solid #DDD5C4" }} className="rounded-sm px-4 py-3 flex items-center justify-between">
+              <div><div className="tm-mono text-xs" style={{ color: "#5F5870" }}>{l.job_no}</div><div className="text-sm font-semibold">{l.name}</div></div>
               <div className="text-right"><div className="tm-mono text-sm">€{l.invoice.total}</div><Stamp status={l.status} /></div>
             </div>
           </button>
